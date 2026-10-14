@@ -2,42 +2,489 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Button Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>The Button</title>
   <style>
+    :root {
+      --bg1: #0f0c29;
+      --bg2: #302b63;
+      --bg3: #24243e;
+      --accent: #ff3cac;
+      --accent2: #784ba0;
+      --accent3: #2b86c5;
+      --text: #ffffff;
+      --muted: rgba(255, 255, 255, 0.65);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg1);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
     body {
-      font-family: system-ui, sans-serif;
+      background: linear-gradient(-45deg, var(--bg1), var(--bg2), #6a1b9a, var(--bg3));
+      background-size: 400% 400%;
+      animation: drift 15s ease infinite;
+    }
+
+    @keyframes drift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #stars { z-index: 0; }
+    #fx { z-index: 2; }
+
+    main {
+      position: relative;
+      z-index: 1;
+      height: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      background: #f5f5f5;
+      gap: 28px;
+      padding: 16px;
+      text-align: center;
     }
-    button {
-      font-size: 1.2rem;
-      padding: 12px 24px;
+
+    .hud {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 14px;
+      padding: 8px 16px;
+      min-width: 90px;
+    }
+
+    .stat .label {
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .stat .value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn-wrap {
+      position: relative;
+      width: 200px;
+      height: 200px;
+    }
+
+    .ring {
+      position: absolute;
+      inset: -14px;
+      border-radius: 50%;
+      background: conic-gradient(var(--accent), var(--accent2), var(--accent3), var(--accent));
+      filter: blur(14px);
+      opacity: 0.8;
+      animation: spin 4s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #theButton {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
       border: none;
-      border-radius: 8px;
-      background: #2563eb;
+      cursor: pointer;
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
       color: white;
+      background: radial-gradient(circle at 30% 30%, #ff7ad9, var(--accent) 40%, var(--accent2) 100%);
+      box-shadow:
+        inset 0 -10px 20px rgba(0, 0, 0, 0.3),
+        inset 0 10px 20px rgba(255, 255, 255, 0.3),
+        0 10px 40px rgba(255, 60, 172, 0.5);
+      transition: transform 0.08s ease;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+    }
+
+    #theButton:active { transform: scale(0.92); }
+    #theButton:focus-visible { outline: 3px solid white; outline-offset: 6px; }
+
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      transform: scale(0);
+      animation: ripple 0.6s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+    #message {
+      font-size: clamp(1.2rem, 5vw, 2rem);
+      font-weight: 800;
+      min-height: 2.6em;
+      max-width: 600px;
+      line-height: 1.3;
+    }
+
+    #message.pop { animation: pop 0.4s cubic-bezier(.17, .89, .32, 1.49); }
+
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .combo {
+      position: fixed;
+      z-index: 3;
+      font-weight: 900;
+      font-size: 1.6rem;
+      pointer-events: none;
+      animation: floatUp 0.9s ease-out forwards;
+      text-shadow: 0 0 12px currentColor;
+    }
+
+    @keyframes floatUp {
+      to { transform: translateY(-90px) scale(1.4); opacity: 0; }
+    }
+
+    .level-banner {
+      position: fixed;
+      z-index: 4;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(2.5rem, 12vw, 6rem);
+      font-weight: 900;
+      pointer-events: none;
+      background: linear-gradient(90deg, #ffd700, #ff3cac, #2b86c5);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: banner 1.6s ease-out forwards;
+    }
+
+    @keyframes banner {
+      0% { transform: scale(0.2) rotate(-10deg); opacity: 0; }
+      30% { transform: scale(1.1) rotate(3deg); opacity: 1; }
+      70% { transform: scale(1) rotate(0); opacity: 1; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    .shake { animation: shake 0.4s; }
+
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-8px, 4px); }
+      40% { transform: translate(8px, -4px); }
+      60% { transform: translate(-6px, -2px); }
+      80% { transform: translate(6px, 2px); }
+    }
+
+    #soundToggle {
+      position: fixed;
+      top: max(16px, env(safe-area-inset-top));
+      right: 16px;
+      z-index: 5;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 1rem;
       cursor: pointer;
     }
-    button:active { background: #1d4ed8; }
-    #message { margin-top: 20px; font-size: 1.1rem; min-height: 1.5em; }
+
+    .hint { color: var(--muted); font-size: 0.85rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      body, .ring { animation: none; }
+      .shake { animation: none; }
+    }
   </style>
 </head>
 <body>
-  <button id="actionButton">Click me</button>
-  <p id="message"></p>
+  <canvas id="stars"></canvas>
+  <canvas id="fx"></canvas>
+
+  <button id="soundToggle" aria-label="Toggle sound">🔊</button>
+
+  <main>
+    <div class="hud">
+      <div class="stat"><div class="label">Clicks</div><div class="value" id="clicks">0</div></div>
+      <div class="stat"><div class="label">Combo</div><div class="value" id="combo">x1</div></div>
+      <div class="stat"><div class="label">Level</div><div class="value" id="level">1</div></div>
+    </div>
+
+    <div class="btn-wrap">
+      <div class="ring"></div>
+      <button id="theButton">PRESS ME</button>
+    </div>
+
+    <div id="message" aria-live="polite">Go on. You know you want to.</div>
+    <div class="hint">Tap fast to build a combo 🔥</div>
+  </main>
 
   <script>
+    const messages = [
+      "I did something! 🎉",
+      "Something has been done. Officially. ✅",
+      "I just reorganized the entire internet. 🌐",
+      "Launched a tiny rocket to the moon 🚀",
+      "Fed a hungry pixel 🍕",
+      "Made a cat somewhere very happy 🐱",
+      "Solved a math problem nobody asked about 🧮",
+      "Watered a virtual plant 🌱",
+      "Told a joke to a robot. It laughed. 🤖",
+      "Turned it off and on again 🔌",
+      "Downloaded more RAM 💾",
+      "High-fived a unicorn 🦄",
+      "Compiled on the first try ✨",
+      "Found the missing semicolon ;",
+      "Danced for exactly 0.3 seconds 💃",
+      "Summoned a rainbow 🌈",
+      "Charged your vibes to 100% 🔋",
+      "Did a kickflip 🛹",
+    ];
+
+    const levelMessages = ["", "", "WARMING UP", "ON FIRE", "UNSTOPPABLE", "LEGENDARY", "GODLIKE", "BEYOND"];
+
+    const btn = document.getElementById("theButton");
+    const msgEl = document.getElementById("message");
+    const clicksEl = document.getElementById("clicks");
+    const comboEl = document.getElementById("combo");
+    const levelEl = document.getElementById("level");
+    const soundToggle = document.getElementById("soundToggle");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     let clicks = 0;
-    document.getElementById("actionButton").addEventListener("click", () => {
+    let combo = 1;
+    let level = 1;
+    let lastClick = -Infinity;
+    let lastMsg = -1;
+    let soundOn = true;
+
+    // ---------- Sound (generated, no files needed) ----------
+    let audio;
+    function beep(freq, duration = 0.12, type = "sine", volume = 0.15) {
+      if (!soundOn) return;
+      try {
+        audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audio.createOscillator();
+        const gain = audio.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audio.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audio.currentTime + duration);
+        gain.gain.setValueAtTime(volume, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
+        osc.connect(gain).connect(audio.destination);
+        osc.start();
+        osc.stop(audio.currentTime + duration);
+      } catch (e) { /* audio not available */ }
+    }
+
+    function fanfare() {
+      [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.2, "triangle", 0.2), i * 110));
+    }
+
+    soundToggle.addEventListener("click", () => {
+      soundOn = !soundOn;
+      soundToggle.textContent = soundOn ? "🔊" : "🔇";
+    });
+
+    // ---------- Starfield background ----------
+    const stars = document.getElementById("stars");
+    const sctx = stars.getContext("2d");
+    let starList = [];
+
+    // ---------- Particle effects ----------
+    const fx = document.getElementById("fx");
+    const ctx = fx.getContext("2d");
+    let particles = [];
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      for (const c of [stars, fx]) {
+        c.width = innerWidth * dpr;
+        c.height = innerHeight * dpr;
+        c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      starList = Array.from({ length: Math.floor((innerWidth * innerHeight) / 6000) }, () => ({
+        x: Math.random() * innerWidth,
+        y: Math.random() * innerHeight,
+        r: Math.random() * 1.5 + 0.3,
+        t: Math.random() * Math.PI * 2,
+        s: Math.random() * 0.02 + 0.005,
+      }));
+    }
+    addEventListener("resize", resize);
+    resize();
+
+    const colors = ["#ff3cac", "#784ba0", "#2b86c5", "#ffd700", "#00f5d4", "#ffffff"];
+
+    function burst(x, y, count) {
+      if (reduceMotion) count = Math.min(count, 10);
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 8 + 3;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 3,
+          size: Math.random() * 6 + 3,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 1,
+          spin: Math.random() * 0.4 - 0.2,
+          rot: Math.random() * Math.PI,
+          shape: Math.random() < 0.5 ? "rect" : "circle",
+        });
+      }
+    }
+
+    function loop() {
+      sctx.clearRect(0, 0, innerWidth, innerHeight);
+      for (const s of starList) {
+        s.t += s.s;
+        sctx.globalAlpha = 0.4 + Math.sin(s.t) * 0.4;
+        sctx.fillStyle = "white";
+        sctx.beginPath();
+        sctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        sctx.fill();
+      }
+      sctx.globalAlpha = 1;
+
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      particles = particles.filter(p => p.life > 0);
+      for (const p of particles) {
+        p.vy += 0.25;
+        p.vx *= 0.98;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.spin;
+        p.life -= 0.012;
+        ctx.save();
+        ctx.globalAlpha = Math.max(p.life, 0);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        if (p.shape === "rect") {
+          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // ---------- The button ----------
+    function randomMessage() {
+      let i;
+      do { i = Math.floor(Math.random() * messages.length); } while (i === lastMsg);
+      lastMsg = i;
+      return messages[i];
+    }
+
+    function floatText(text, x, y, color) {
+      const el = document.createElement("div");
+      el.className = "combo";
+      el.textContent = text;
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      el.style.color = color;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 900);
+    }
+
+    function levelUp() {
+      level++;
+      levelEl.textContent = level;
+      const banner = document.createElement("div");
+      banner.className = "level-banner";
+      banner.textContent = levelMessages[level] || "LEVEL " + level;
+      document.body.appendChild(banner);
+      setTimeout(() => banner.remove(), 1600);
+      fanfare();
+      burst(innerWidth / 2, innerHeight / 2, 150);
+      if (!reduceMotion) {
+        document.body.classList.remove("shake");
+        void document.body.offsetWidth;
+        document.body.classList.add("shake");
+      }
+      if (navigator.vibrate) navigator.vibrate([40, 30, 80]);
+    }
+
+    btn.addEventListener("click", (e) => {
+      const now = performance.now();
+      combo = now - lastClick < 450 ? Math.min(combo + 1, 99) : 1;
+      lastClick = now;
       clicks++;
-      document.getElementById("message").textContent =
-        "I did something! (clicked " + clicks + " time" + (clicks === 1 ? "" : "s") + ")";
+
+      clicksEl.textContent = clicks;
+      comboEl.textContent = "x" + combo;
+
+      // Ripple at tap point
+      const rect = btn.getBoundingClientRect();
+      const ripple = document.createElement("span");
+      const size = rect.width / 2;
+      ripple.className = "ripple";
+      ripple.style.width = ripple.style.height = size + "px";
+      const cx = (e.clientX || rect.left + rect.width / 2);
+      const cy = (e.clientY || rect.top + rect.height / 2);
+      ripple.style.left = cx - rect.left - size / 2 + "px";
+      ripple.style.top = cy - rect.top - size / 2 + "px";
+      btn.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+
+      // Confetti, sound, message
+      burst(cx, cy, 25 + combo * 3);
+      beep(300 + combo * 40, 0.1, combo > 5 ? "square" : "sine", 0.12);
+      if (navigator.vibrate) navigator.vibrate(15);
+
+      msgEl.textContent = randomMessage();
+      msgEl.classList.remove("pop");
+      void msgEl.offsetWidth;
+      msgEl.classList.add("pop");
+
+      if (combo > 1) {
+        const hue = Math.min(combo * 12, 360);
+        floatText("x" + combo + "!", cx + (Math.random() * 60 - 30), cy - 40, `hsl(${hue}, 100%, 65%)`);
+      }
+
+      // Level up every 10 clicks
+      if (clicks % 10 === 0) levelUp();
     });
   </script>
 </body>
