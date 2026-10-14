@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>The Button</title>
+  <title>Cookie Clicker</title>
   <style>
     :root {
-      --bg1: #0f0c29;
-      --bg2: #302b63;
-      --bg3: #24243e;
-      --accent: #ff3cac;
-      --accent2: #784ba0;
-      --accent3: #2b86c5;
-      --text: #ffffff;
-      --muted: rgba(255, 255, 255, 0.65);
+      --bg1: #1a0f0a;
+      --bg2: #3b2314;
+      --panel: rgba(255, 240, 220, 0.07);
+      --panel-border: rgba(255, 220, 180, 0.15);
+      --gold: #ffcc4d;
+      --accent: #ff8a3d;
+      --good: #6ee7a8;
+      --text: #fff6ec;
+      --muted: rgba(255, 246, 236, 0.6);
     }
 
     * { box-sizing: border-box; }
@@ -21,281 +22,564 @@
     html, body {
       margin: 0;
       height: 100%;
-      overflow: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
       color: var(--text);
       background: var(--bg1);
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
     }
 
     body {
-      background: linear-gradient(-45deg, var(--bg1), var(--bg2), #6a1b9a, var(--bg3));
-      background-size: 400% 400%;
-      animation: drift 15s ease infinite;
+      background: radial-gradient(ellipse at top, var(--bg2), var(--bg1) 70%);
+      background-attachment: fixed;
+      overflow-x: hidden;
     }
 
-    @keyframes drift {
-      0%, 100% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-    }
-
-    canvas {
+    #fx {
       position: fixed;
       inset: 0;
       width: 100%;
       height: 100%;
       pointer-events: none;
+      z-index: 5;
     }
 
-    #stars { z-index: 0; }
-    #fx { z-index: 2; }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: max(16px, env(safe-area-inset-top)) 16px 32px;
+    }
 
-    main {
-      position: relative;
-      z-index: 1;
-      height: 100%;
+    @media (min-width: 820px) {
+      .layout { grid-template-columns: 1.1fr 1fr; align-items: start; }
+      .cookie-area { position: sticky; top: 16px; }
+    }
+
+    /* ---------- Cookie area ---------- */
+    .cookie-area {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 28px;
-      padding: 16px;
-      text-align: center;
-    }
-
-    .hud {
-      display: flex;
       gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
+      text-align: center;
+      user-select: none;
     }
 
-    .stat {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-radius: 14px;
-      padding: 8px 16px;
-      min-width: 90px;
-    }
-
-    .stat .label {
-      font-size: 0.7rem;
-      letter-spacing: 0.12em;
+    .bakery-name {
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
       color: var(--muted);
     }
 
-    .stat .value {
-      font-size: 1.4rem;
-      font-weight: 800;
+    #count {
+      font-size: clamp(2rem, 9vw, 3.2rem);
+      font-weight: 900;
       font-variant-numeric: tabular-nums;
+      line-height: 1;
+      text-shadow: 0 4px 20px rgba(255, 204, 77, 0.35);
     }
 
-    .btn-wrap {
+    #cps { color: var(--muted); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+
+    .cookie-wrap {
       position: relative;
-      width: 200px;
-      height: 200px;
+      width: min(68vw, 280px);
+      aspect-ratio: 1;
+      margin: 12px 0;
     }
 
-    .ring {
+    .cookie-wrap::before {
+      content: "";
       position: absolute;
-      inset: -14px;
+      inset: -18%;
       border-radius: 50%;
-      background: conic-gradient(var(--accent), var(--accent2), var(--accent3), var(--accent));
-      filter: blur(14px);
-      opacity: 0.8;
-      animation: spin 4s linear infinite;
+      background: radial-gradient(circle, rgba(255, 204, 77, 0.35), transparent 65%);
+      animation: pulse 3s ease-in-out infinite;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.95); opacity: 0.7; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
 
-    #theButton {
+    #cookie {
       position: relative;
       width: 100%;
       height: 100%;
-      border-radius: 50%;
       border: none;
+      padding: 0;
+      background: none;
       cursor: pointer;
-      font-size: 1.5rem;
-      font-weight: 900;
-      letter-spacing: 0.05em;
-      color: white;
-      background: radial-gradient(circle at 30% 30%, #ff7ad9, var(--accent) 40%, var(--accent2) 100%);
-      box-shadow:
-        inset 0 -10px 20px rgba(0, 0, 0, 0.3),
-        inset 0 10px 20px rgba(255, 255, 255, 0.3),
-        0 10px 40px rgba(255, 60, 172, 0.5);
       transition: transform 0.08s ease;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-      overflow: hidden;
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.5));
     }
 
-    #theButton:active { transform: scale(0.92); }
-    #theButton:focus-visible { outline: 3px solid white; outline-offset: 6px; }
+    #cookie:hover { transform: scale(1.03); }
+    #cookie:active { transform: scale(0.94); }
+    #cookie:focus-visible { outline: 3px solid var(--gold); outline-offset: 8px; border-radius: 50%; }
+    #cookie svg { width: 100%; height: 100%; display: block; }
 
-    .ripple {
-      position: absolute;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.5);
-      transform: scale(0);
-      animation: ripple 0.6s ease-out forwards;
-      pointer-events: none;
-    }
-
-    @keyframes ripple { to { transform: scale(4); opacity: 0; } }
-
-    #message {
-      font-size: clamp(1.2rem, 5vw, 2rem);
-      font-weight: 800;
-      min-height: 2.6em;
-      max-width: 600px;
-      line-height: 1.3;
-    }
-
-    #message.pop { animation: pop 0.4s cubic-bezier(.17, .89, .32, 1.49); }
-
-    @keyframes pop {
-      0% { transform: scale(0.5); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    .combo {
+    .float-num {
       position: fixed;
-      z-index: 3;
+      z-index: 6;
       font-weight: 900;
-      font-size: 1.6rem;
+      font-size: 1.3rem;
+      color: white;
       pointer-events: none;
-      animation: floatUp 0.9s ease-out forwards;
-      text-shadow: 0 0 12px currentColor;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+      animation: floatUp 1s ease-out forwards;
     }
 
     @keyframes floatUp {
-      to { transform: translateY(-90px) scale(1.4); opacity: 0; }
+      to { transform: translateY(-80px); opacity: 0; }
     }
 
-    .level-banner {
-      position: fixed;
-      z-index: 4;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: clamp(2.5rem, 12vw, 6rem);
-      font-weight: 900;
-      pointer-events: none;
-      background: linear-gradient(90deg, #ffd700, #ff3cac, #2b86c5);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      animation: banner 1.6s ease-out forwards;
+    #news {
+      min-height: 2.6em;
+      max-width: 420px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-style: italic;
     }
 
-    @keyframes banner {
-      0% { transform: scale(0.2) rotate(-10deg); opacity: 0; }
-      30% { transform: scale(1.1) rotate(3deg); opacity: 1; }
-      70% { transform: scale(1) rotate(0); opacity: 1; }
-      100% { transform: scale(1.4); opacity: 0; }
-    }
+    .row-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 
-    .shake { animation: shake 0.4s; }
-
-    @keyframes shake {
-      0%, 100% { transform: translate(0, 0); }
-      20% { transform: translate(-8px, 4px); }
-      40% { transform: translate(8px, -4px); }
-      60% { transform: translate(-6px, -2px); }
-      80% { transform: translate(6px, 2px); }
-    }
-
-    #soundToggle {
-      position: fixed;
-      top: max(16px, env(safe-area-inset-top));
-      right: 16px;
-      z-index: 5;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
+    .small-btn {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
       border-radius: 999px;
-      padding: 8px 14px;
-      font-size: 1rem;
+      padding: 6px 14px;
+      font-size: 0.85rem;
       cursor: pointer;
     }
 
-    .hint { color: var(--muted); font-size: 0.85rem; }
+    .small-btn:hover { background: rgba(255, 240, 220, 0.14); }
+
+    /* ---------- Shop ---------- */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 14px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 0.8rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .shop { display: flex; flex-direction: column; gap: 16px; }
+
+    #upgrades {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 52px;
+    }
+
+    #upgrades:empty::after {
+      content: "Keep baking to unlock upgrades…";
+      color: var(--muted);
+      font-size: 0.85rem;
+      align-self: center;
+    }
+
+    .upgrade {
+      width: 52px;
+      height: 52px;
+      font-size: 1.6rem;
+      border-radius: 12px;
+      border: 1px solid var(--panel-border);
+      background: rgba(255, 204, 77, 0.12);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.1s;
+    }
+
+    .upgrade:hover:not(:disabled) { transform: translateY(-2px); }
+    .upgrade:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(0.6); }
+
+    .building {
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      border-radius: 14px;
+      border: 1px solid var(--panel-border);
+      background: rgba(255, 240, 220, 0.05);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .building:last-child { margin-bottom: 0; }
+    .building:hover:not(:disabled) { background: rgba(255, 240, 220, 0.12); }
+    .building:active:not(:disabled) { transform: scale(0.98); }
+    .building:disabled { opacity: 0.45; cursor: not-allowed; }
+    .building.locked .b-name { filter: blur(4px); }
+
+    .b-icon { font-size: 2rem; text-align: center; }
+    .b-name { font-weight: 800; font-size: 1.05rem; }
+    .b-info { font-size: 0.8rem; color: var(--muted); }
+    .b-cost { font-size: 0.85rem; color: var(--gold); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .building:disabled .b-cost { color: #ff7b7b; }
+    .b-owned { font-size: 1.8rem; font-weight: 900; opacity: 0.35; font-variant-numeric: tabular-nums; }
+
+    .buy-amount { display: flex; gap: 4px; }
+    .buy-amount button {
+      background: none;
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .buy-amount button.active { background: var(--gold); color: #3b2314; border-color: var(--gold); font-weight: 800; }
+
+    /* ---------- Golden cookie ---------- */
+    #golden {
+      position: fixed;
+      z-index: 7;
+      width: 72px;
+      height: 72px;
+      border: none;
+      background: none;
+      padding: 0;
+      cursor: pointer;
+      display: none;
+      animation: goldSpin 4s linear infinite, goldFade 12s linear forwards;
+      filter: drop-shadow(0 0 16px var(--gold));
+    }
+
+    #golden svg { width: 100%; height: 100%; }
+
+    @keyframes goldSpin { to { transform: rotate(360deg); } }
+    @keyframes goldFade { 0% { opacity: 0; } 8% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+    #buff {
+      display: none;
+      background: linear-gradient(90deg, #ffcc4d, #ff8a3d);
+      color: #3b2314;
+      font-weight: 900;
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 0.85rem;
+    }
+
+    /* ---------- Toasts ---------- */
+    #toasts {
+      position: fixed;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 8;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      width: calc(100% - 32px);
+      max-width: 380px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: rgba(40, 24, 14, 0.95);
+      border: 1px solid var(--gold);
+      border-radius: 14px;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      animation: toastIn 0.3s ease-out, toastOut 0.4s ease-in 3.2s forwards;
+      width: 100%;
+    }
+
+    .toast b { color: var(--gold); }
+
+    @keyframes toastIn { from { transform: translateY(20px); opacity: 0; } }
+    @keyframes toastOut { to { transform: translateY(20px); opacity: 0; } }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4px 12px;
+      font-size: 0.85rem;
+    }
+    .stats-grid span:nth-child(odd) { color: var(--muted); }
+    .stats-grid span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+
+    .ach-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .ach {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      font-size: 1.2rem;
+      border-radius: 10px;
+      background: rgba(255, 240, 220, 0.05);
+      border: 1px solid var(--panel-border);
+      filter: grayscale(1);
+      opacity: 0.35;
+    }
+    .ach.got { filter: none; opacity: 1; background: rgba(255, 204, 77, 0.15); border-color: var(--gold); }
 
     @media (prefers-reduced-motion: reduce) {
-      body, .ring { animation: none; }
-      .shake { animation: none; }
+      .cookie-wrap::before, #golden { animation: none; }
     }
   </style>
 </head>
 <body>
-  <canvas id="stars"></canvas>
   <canvas id="fx"></canvas>
 
-  <button id="soundToggle" aria-label="Toggle sound">🔊</button>
+  <div class="layout">
+    <section class="cookie-area">
+      <div class="bakery-name">Your Bakery</div>
+      <div id="count">0 cookies</div>
+      <div id="cps">per second: 0</div>
+      <div id="buff"></div>
 
-  <main>
-    <div class="hud">
-      <div class="stat"><div class="label">Clicks</div><div class="value" id="clicks">0</div></div>
-      <div class="stat"><div class="label">Combo</div><div class="value" id="combo">x1</div></div>
-      <div class="stat"><div class="label">Level</div><div class="value" id="level">1</div></div>
-    </div>
+      <div class="cookie-wrap">
+        <button id="cookie" aria-label="Click the cookie">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <defs>
+              <radialGradient id="dough" cx="40%" cy="35%" r="70%">
+                <stop offset="0%" stop-color="#f2c27b"/>
+                <stop offset="60%" stop-color="#d99a4e"/>
+                <stop offset="100%" stop-color="#a8682b"/>
+              </radialGradient>
+            </defs>
+            <circle cx="100" cy="100" r="92" fill="url(#dough)" stroke="#8a5220" stroke-width="4"/>
+            <g fill="#4a2a12">
+              <ellipse cx="65" cy="60" rx="11" ry="9" transform="rotate(20 65 60)"/>
+              <ellipse cx="120" cy="50" rx="9" ry="7"/>
+              <ellipse cx="145" cy="95" rx="12" ry="9" transform="rotate(-30 145 95)"/>
+              <ellipse cx="95" cy="100" rx="10" ry="8" transform="rotate(45 95 100)"/>
+              <ellipse cx="55" cy="115" rx="9" ry="7"/>
+              <ellipse cx="110" cy="145" rx="12" ry="8" transform="rotate(10 110 145)"/>
+              <ellipse cx="70" cy="155" rx="7" ry="6"/>
+              <ellipse cx="150" cy="140" rx="8" ry="6"/>
+              <ellipse cx="85" cy="35" rx="6" ry="5"/>
+            </g>
+            <g fill="#ffe2b0" opacity="0.35">
+              <circle cx="60" cy="45" r="14"/>
+            </g>
+          </svg>
+        </button>
+      </div>
 
-    <div class="btn-wrap">
-      <div class="ring"></div>
-      <button id="theButton">PRESS ME</button>
-    </div>
+      <div id="news">Welcome to your bakery. Click the cookie to start!</div>
 
-    <div id="message" aria-live="polite">Go on. You know you want to.</div>
-    <div class="hint">Tap fast to build a combo 🔥</div>
-  </main>
+      <div class="row-btns">
+        <button class="small-btn" id="soundToggle">🔊 Sound</button>
+        <button class="small-btn" id="resetBtn">🗑️ Reset</button>
+      </div>
+    </section>
+
+    <section class="shop">
+      <div class="panel">
+        <h2>Upgrades</h2>
+        <div id="upgrades"></div>
+      </div>
+
+      <div class="panel">
+        <h2>
+          <span>Buildings</span>
+          <span class="buy-amount" id="buyAmount">
+            <button data-n="1" class="active">x1</button>
+            <button data-n="10">x10</button>
+            <button data-n="100">x100</button>
+          </span>
+        </h2>
+        <div id="buildings"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Stats &amp; Achievements</h2>
+        <div class="stats-grid" id="stats"></div>
+        <div class="ach-list" id="achievements"></div>
+      </div>
+    </section>
+  </div>
+
+  <button id="golden" aria-label="Golden cookie">
+    <svg viewBox="0 0 200 200" aria-hidden="true">
+      <circle cx="100" cy="100" r="90" fill="#ffcc4d" stroke="#e09b1a" stroke-width="8"/>
+      <g fill="#e09b1a">
+        <circle cx="65" cy="65" r="10"/><circle cx="130" cy="60" r="9"/>
+        <circle cx="100" cy="105" r="11"/><circle cx="60" cy="130" r="9"/>
+        <circle cx="140" cy="135" r="10"/>
+      </g>
+    </svg>
+  </button>
+
+  <div id="toasts"></div>
 
   <script>
-    const messages = [
-      "I did something! 🎉",
-      "Something has been done. Officially. ✅",
-      "I just reorganized the entire internet. 🌐",
-      "Launched a tiny rocket to the moon 🚀",
-      "Fed a hungry pixel 🍕",
-      "Made a cat somewhere very happy 🐱",
-      "Solved a math problem nobody asked about 🧮",
-      "Watered a virtual plant 🌱",
-      "Told a joke to a robot. It laughed. 🤖",
-      "Turned it off and on again 🔌",
-      "Downloaded more RAM 💾",
-      "High-fived a unicorn 🦄",
-      "Compiled on the first try ✨",
-      "Found the missing semicolon ;",
-      "Danced for exactly 0.3 seconds 💃",
-      "Summoned a rainbow 🌈",
-      "Charged your vibes to 100% 🔋",
-      "Did a kickflip 🛹",
+    // ================= Game data =================
+    const BUILDINGS = [
+      { id: "cursor",  name: "Cursor",       icon: "👆", base: 15,          cps: 0.1,    desc: "Clicks the cookie for you." },
+      { id: "grandma", name: "Grandma",      icon: "👵", base: 100,         cps: 1,      desc: "A nice grandma to bake more cookies." },
+      { id: "farm",    name: "Farm",         icon: "🌾", base: 1100,        cps: 8,      desc: "Grows cookie plants from cookie seeds." },
+      { id: "mine",    name: "Mine",         icon: "⛏️", base: 12000,       cps: 47,     desc: "Mines out cookie dough and chocolate chips." },
+      { id: "factory", name: "Factory",      icon: "🏭", base: 130000,      cps: 260,    desc: "Produces large quantities of cookies." },
+      { id: "bank",    name: "Bank",         icon: "🏦", base: 1400000,     cps: 1400,   desc: "Generates cookies from interest." },
+      { id: "temple",  name: "Temple",       icon: "🛕", base: 20000000,    cps: 7800,   desc: "Full of precious, ancient chocolate." },
+      { id: "rocket",  name: "Rocket",       icon: "🚀", base: 330000000,   cps: 44000,  desc: "Brings cookies from the cookie planet." },
+      { id: "portal",  name: "Portal",       icon: "🌀", base: 5100000000,  cps: 260000, desc: "Opens a door to the Cookieverse." },
     ];
 
-    const levelMessages = ["", "", "WARMING UP", "ON FIRE", "UNSTOPPABLE", "LEGENDARY", "GODLIKE", "BEYOND"];
+    // Upgrades: unlock when a condition is met, then can be bought once.
+    const UPGRADES = [
+      { id: "click1", icon: "🖱️", name: "Reinforced Finger",  cost: 100,      desc: "Clicking is twice as strong.",           unlock: s => s.totalClicks >= 15,             apply: e => e.clickMult *= 2 },
+      { id: "click2", icon: "💪", name: "Strong Arm",         cost: 5000,     desc: "Clicking is twice as strong.",           unlock: s => s.totalClicks >= 200,            apply: e => e.clickMult *= 2 },
+      { id: "click3", icon: "⚡", name: "Lightning Tap",      cost: 100000,   desc: "Clicks also earn 1% of your cookies/sec.", unlock: s => s.totalClicks >= 1000,         apply: e => e.clickCpsPct += 0.01 },
+      { id: "cur1",   icon: "👆", name: "Ambidextrous",       cost: 500,      desc: "Cursors are twice as efficient.",        unlock: s => owned(s, "cursor") >= 1,        apply: e => e.mult.cursor *= 2 },
+      { id: "cur2",   icon: "🖐️", name: "Thousand Fingers",   cost: 10000,    desc: "Cursors are twice as efficient.",        unlock: s => owned(s, "cursor") >= 10,       apply: e => e.mult.cursor *= 2 },
+      { id: "gran1",  icon: "🧓", name: "Forwards from Grandma", cost: 1000,  desc: "Grandmas are twice as efficient.",       unlock: s => owned(s, "grandma") >= 1,       apply: e => e.mult.grandma *= 2 },
+      { id: "gran2",  icon: "🍪", name: "Steel Rolling Pins", cost: 50000,    desc: "Grandmas are twice as efficient.",       unlock: s => owned(s, "grandma") >= 10,      apply: e => e.mult.grandma *= 2 },
+      { id: "farm1",  icon: "🌱", name: "Cheap Hoes",         cost: 11000,    desc: "Farms are twice as efficient.",          unlock: s => owned(s, "farm") >= 1,          apply: e => e.mult.farm *= 2 },
+      { id: "mine1",  icon: "💎", name: "Sugar Gas",          cost: 120000,   desc: "Mines are twice as efficient.",          unlock: s => owned(s, "mine") >= 1,          apply: e => e.mult.mine *= 2 },
+      { id: "fac1",   icon: "⚙️", name: "Sturdier Belts",     cost: 1300000,  desc: "Factories are twice as efficient.",      unlock: s => owned(s, "factory") >= 1,       apply: e => e.mult.factory *= 2 },
+      { id: "bank1",  icon: "💳", name: "Cookie Credit Cards", cost: 14000000, desc: "Banks are twice as efficient.",         unlock: s => owned(s, "bank") >= 1,          apply: e => e.mult.bank *= 2 },
+      { id: "all1",   icon: "🍫", name: "Extra Chocolate",    cost: 1000000,  desc: "All production +10%.",                   unlock: s => s.totalBaked >= 500000,         apply: e => e.globalMult *= 1.1 },
+      { id: "all2",   icon: "🥛", name: "Cookie Milk",        cost: 50000000, desc: "All production +25%.",                   unlock: s => s.totalBaked >= 20000000,       apply: e => e.globalMult *= 1.25 },
+      { id: "lucky",  icon: "🍀", name: "Lucky Day",          cost: 77777,    desc: "Golden cookies appear twice as often.",  unlock: s => s.goldenClicks >= 3,            apply: e => e.goldenRate *= 2 },
+    ];
 
-    const btn = document.getElementById("theButton");
-    const msgEl = document.getElementById("message");
-    const clicksEl = document.getElementById("clicks");
-    const comboEl = document.getElementById("combo");
-    const levelEl = document.getElementById("level");
-    const soundToggle = document.getElementById("soundToggle");
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ACHIEVEMENTS = [
+      { id: "c1",    icon: "🍪", name: "Wake and Bake",     desc: "Bake 1 cookie.",                   test: s => s.totalBaked >= 1 },
+      { id: "c1k",   icon: "🥠", name: "Making Some Dough", desc: "Bake 1,000 cookies.",              test: s => s.totalBaked >= 1000 },
+      { id: "c100k", icon: "🎂", name: "So Baked Right Now", desc: "Bake 100,000 cookies.",           test: s => s.totalBaked >= 100000 },
+      { id: "c10m",  icon: "🏰", name: "Cookie Empire",     desc: "Bake 10 million cookies.",         test: s => s.totalBaked >= 1e7 },
+      { id: "c1b",   icon: "🌌", name: "Cookie Galaxy",     desc: "Bake 1 billion cookies.",          test: s => s.totalBaked >= 1e9 },
+      { id: "clk100",icon: "👉", name: "Clicktastic",       desc: "Click 100 times.",                 test: s => s.totalClicks >= 100 },
+      { id: "clk1k", icon: "🔥", name: "Clickathlon",       desc: "Click 1,000 times.",               test: s => s.totalClicks >= 1000 },
+      { id: "cps10", icon: "⏱️", name: "Casual Baking",     desc: "Reach 10 cookies per second.",     test: s => cpsNow >= 10 },
+      { id: "cps1k", icon: "🏎️", name: "Hardcore Baking",   desc: "Reach 1,000 cookies per second.",  test: s => cpsNow >= 1000 },
+      { id: "gran",  icon: "👵", name: "Grandma's Cookies", desc: "Own 10 grandmas.",                 test: s => owned(s, "grandma") >= 10 },
+      { id: "gold1", icon: "✨", name: "Golden Touch",      desc: "Click a golden cookie.",           test: s => s.goldenClicks >= 1 },
+      { id: "all",   icon: "🏆", name: "Collector",         desc: "Own at least 1 of every building.", test: s => BUILDINGS.every(b => owned(s, b.id) >= 1) },
+    ];
 
-    let clicks = 0;
-    let combo = 1;
-    let level = 1;
-    let lastClick = -Infinity;
-    let lastMsg = -1;
+    const NEWS = [
+      "News: local bakery smells suspiciously amazing.",
+      "News: scientists confirm cookies are 'pretty good'.",
+      "News: grandmas report record levels of baking.",
+      "News: cookie prices skyrocket; milk sales soar.",
+      "News: man tries to eat just one cookie, fails.",
+      "News: experts warn of global cookie surplus. Nobody complains.",
+      "News: cookie farm spotted from space.",
+      "News: 'I just wanted to bake a little,' says local tycoon.",
+      "News: cookie-shaped crop circles appear overnight.",
+      "News: portal to the Cookieverse 'mostly safe,' says nobody.",
+    ];
+
+    // ================= State =================
+    const SAVE_KEY = "cookieClickerSave.v1";
+
+    function freshState() {
+      return {
+        cookies: 0,
+        totalBaked: 0,
+        totalClicks: 0,
+        goldenClicks: 0,
+        buildings: {},
+        upgrades: [],
+        achievements: [],
+        startedAt: Date.now(),
+        lastSaved: Date.now(),
+      };
+    }
+
+    let state = freshState();
+    let effects;       // derived from upgrades
+    let cpsNow = 0;
+    let buyAmount = 1;
     let soundOn = true;
+    let buffUntil = 0;
+    let buffMult = 1;
+    let buffName = "";
 
-    // ---------- Sound (generated, no files needed) ----------
+    function owned(s, id) { return s.buildings[id] || 0; }
+
+    function computeEffects() {
+      const e = { clickMult: 1, clickCpsPct: 0, globalMult: 1, goldenRate: 1, mult: {} };
+      for (const b of BUILDINGS) e.mult[b.id] = 1;
+      for (const u of UPGRADES) if (state.upgrades.includes(u.id)) u.apply(e);
+      effects = e;
+    }
+
+    function buildingCps(b) {
+      return b.cps * owned(state, b.id) * effects.mult[b.id];
+    }
+
+    function baseCps() {
+      return BUILDINGS.reduce((sum, b) => sum + buildingCps(b), 0) * effects.globalMult;
+    }
+
+    function currentCps() {
+      return baseCps() * (Date.now() < buffUntil && buffName === "Frenzy" ? buffMult : 1);
+    }
+
+    function clickValue() {
+      let v = (1 + baseCps() * effects.clickCpsPct) * effects.clickMult;
+      if (Date.now() < buffUntil && buffName === "Click Frenzy") v *= buffMult;
+      return v;
+    }
+
+    // Cost of buying `n` of a building starting from `have` owned (price grows 15% each).
+    function costFor(b, have, n) {
+      const r = 1.15;
+      return Math.ceil(b.base * Math.pow(r, have) * (Math.pow(r, n) - 1) / (r - 1));
+    }
+
+    // ================= Formatting =================
+    const SUFFIXES = ["", " thousand", " million", " billion", " trillion", " quadrillion", " quintillion", " sextillion"];
+
+    function fmt(n, decimals = 0) {
+      if (n < 1000) return n.toFixed(n < 10 && decimals ? decimals : 0).replace(/\.0$/, "");
+      if (n < 1e6) return Math.floor(n).toLocaleString("en-US");
+      const tier = Math.min(Math.floor(Math.log10(n) / 3), SUFFIXES.length - 1);
+      return (n / Math.pow(1000, tier)).toFixed(3).replace(/\.?0+$/, "") + SUFFIXES[tier];
+    }
+
+    function fmtTime(ms) {
+      const s = Math.floor(ms / 1000);
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      return h ? `${h}h ${m}m` : m ? `${m}m ${sec}s` : `${sec}s`;
+    }
+
+    // ================= Save / load =================
+    function save() {
+      state.lastSaved = Date.now();
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
+    }
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return;
+        state = Object.assign(freshState(), JSON.parse(raw));
+      } catch (e) { state = freshState(); }
+    }
+
+    // ================= Sound =================
     let audio;
-    function beep(freq, duration = 0.12, type = "sine", volume = 0.15) {
+    function beep(freq, duration = 0.08, type = "sine", volume = 0.1) {
       if (!soundOn) return;
       try {
         audio = audio || new (window.AudioContext || window.webkitAudioContext)();
@@ -303,189 +587,366 @@
         const gain = audio.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, audio.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audio.currentTime + duration);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.4, audio.currentTime + duration);
         gain.gain.setValueAtTime(volume, audio.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
         osc.connect(gain).connect(audio.destination);
         osc.start();
         osc.stop(audio.currentTime + duration);
-      } catch (e) { /* audio not available */ }
+      } catch (e) { /* audio unavailable */ }
     }
 
-    function fanfare() {
-      [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.2, "triangle", 0.2), i * 110));
+    function chime() {
+      [659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.15, "triangle", 0.12), i * 90));
     }
 
-    soundToggle.addEventListener("click", () => {
-      soundOn = !soundOn;
-      soundToggle.textContent = soundOn ? "🔊" : "🔇";
-    });
-
-    // ---------- Starfield background ----------
-    const stars = document.getElementById("stars");
-    const sctx = stars.getContext("2d");
-    let starList = [];
-
-    // ---------- Particle effects ----------
+    // ================= Particles =================
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const fx = document.getElementById("fx");
     const ctx = fx.getContext("2d");
     let particles = [];
 
     function resize() {
       const dpr = window.devicePixelRatio || 1;
-      for (const c of [stars, fx]) {
-        c.width = innerWidth * dpr;
-        c.height = innerHeight * dpr;
-        c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
-      starList = Array.from({ length: Math.floor((innerWidth * innerHeight) / 6000) }, () => ({
-        x: Math.random() * innerWidth,
-        y: Math.random() * innerHeight,
-        r: Math.random() * 1.5 + 0.3,
-        t: Math.random() * Math.PI * 2,
-        s: Math.random() * 0.02 + 0.005,
-      }));
+      fx.width = innerWidth * dpr;
+      fx.height = innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     addEventListener("resize", resize);
     resize();
 
-    const colors = ["#ff3cac", "#784ba0", "#2b86c5", "#ffd700", "#00f5d4", "#ffffff"];
-
-    function burst(x, y, count) {
-      if (reduceMotion) count = Math.min(count, 10);
+    function crumbs(x, y, count, colors = ["#d99a4e", "#a8682b", "#4a2a12", "#f2c27b"]) {
+      if (reduceMotion) count = Math.min(count, 4);
+      if (particles.length > 400) return;
       for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 8 + 3;
+        const a = Math.random() * Math.PI * 2;
+        const sp = Math.random() * 5 + 2;
         particles.push({
           x, y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 3,
-          size: Math.random() * 6 + 3,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 3,
+          size: Math.random() * 5 + 2,
           color: colors[Math.floor(Math.random() * colors.length)],
           life: 1,
-          spin: Math.random() * 0.4 - 0.2,
-          rot: Math.random() * Math.PI,
-          shape: Math.random() < 0.5 ? "rect" : "circle",
         });
       }
     }
 
-    function loop() {
-      sctx.clearRect(0, 0, innerWidth, innerHeight);
-      for (const s of starList) {
-        s.t += s.s;
-        sctx.globalAlpha = 0.4 + Math.sin(s.t) * 0.4;
-        sctx.fillStyle = "white";
-        sctx.beginPath();
-        sctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        sctx.fill();
-      }
-      sctx.globalAlpha = 1;
-
+    function drawParticles() {
       ctx.clearRect(0, 0, innerWidth, innerHeight);
       particles = particles.filter(p => p.life > 0);
       for (const p of particles) {
         p.vy += 0.25;
-        p.vx *= 0.98;
         p.x += p.vx;
         p.y += p.vy;
-        p.rot += p.spin;
-        p.life -= 0.012;
-        ctx.save();
+        p.life -= 0.02;
         ctx.globalAlpha = Math.max(p.life, 0);
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
         ctx.fillStyle = p.color;
-        if (p.shape === "rect") {
-          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
-        } else {
-          ctx.beginPath();
-          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+        ctx.fill();
       }
-      requestAnimationFrame(loop);
-    }
-    loop();
-
-    // ---------- The button ----------
-    function randomMessage() {
-      let i;
-      do { i = Math.floor(Math.random() * messages.length); } while (i === lastMsg);
-      lastMsg = i;
-      return messages[i];
+      ctx.globalAlpha = 1;
     }
 
-    function floatText(text, x, y, color) {
+    function floatNum(text, x, y, color = "white") {
       const el = document.createElement("div");
-      el.className = "combo";
+      el.className = "float-num";
       el.textContent = text;
-      el.style.left = x + "px";
-      el.style.top = y + "px";
+      el.style.left = x - 20 + Math.random() * 30 + "px";
+      el.style.top = y - 30 + "px";
       el.style.color = color;
       document.body.appendChild(el);
-      setTimeout(() => el.remove(), 900);
+      setTimeout(() => el.remove(), 1000);
     }
 
-    function levelUp() {
-      level++;
-      levelEl.textContent = level;
-      const banner = document.createElement("div");
-      banner.className = "level-banner";
-      banner.textContent = levelMessages[level] || "LEVEL " + level;
-      document.body.appendChild(banner);
-      setTimeout(() => banner.remove(), 1600);
-      fanfare();
-      burst(innerWidth / 2, innerHeight / 2, 150);
-      if (!reduceMotion) {
-        document.body.classList.remove("shake");
-        void document.body.offsetWidth;
-        document.body.classList.add("shake");
-      }
-      if (navigator.vibrate) navigator.vibrate([40, 30, 80]);
+    function toast(html) {
+      const el = document.createElement("div");
+      el.className = "toast";
+      el.innerHTML = html;
+      const box = document.getElementById("toasts");
+      box.appendChild(el);
+      while (box.children.length > 3) box.firstChild.remove();
+      setTimeout(() => el.remove(), 3700);
     }
 
-    btn.addEventListener("click", (e) => {
-      const now = performance.now();
-      combo = now - lastClick < 450 ? Math.min(combo + 1, 99) : 1;
-      lastClick = now;
-      clicks++;
+    // ================= UI =================
+    const countEl = document.getElementById("count");
+    const cpsEl = document.getElementById("cps");
+    const buffEl = document.getElementById("buff");
+    const buildingsEl = document.getElementById("buildings");
+    const upgradesEl = document.getElementById("upgrades");
+    const statsEl = document.getElementById("stats");
+    const achEl = document.getElementById("achievements");
+    const newsEl = document.getElementById("news");
 
-      clicksEl.textContent = clicks;
-      comboEl.textContent = "x" + combo;
+    // Build building rows once, then just update text/disabled each frame.
+    const buildingRows = {};
+    for (const b of BUILDINGS) {
+      const row = document.createElement("button");
+      row.className = "building";
+      row.innerHTML = `
+        <div class="b-icon">${b.icon}</div>
+        <div>
+          <div class="b-name">${b.name}</div>
+          <div class="b-info"></div>
+          <div class="b-cost"></div>
+        </div>
+        <div class="b-owned">0</div>`;
+      row.addEventListener("click", (e) => buyBuilding(b, e));
+      buildingsEl.appendChild(row);
+      buildingRows[b.id] = {
+        row,
+        info: row.querySelector(".b-info"),
+        cost: row.querySelector(".b-cost"),
+        owned: row.querySelector(".b-owned"),
+      };
+    }
 
-      // Ripple at tap point
-      const rect = btn.getBoundingClientRect();
-      const ripple = document.createElement("span");
-      const size = rect.width / 2;
-      ripple.className = "ripple";
-      ripple.style.width = ripple.style.height = size + "px";
-      const cx = (e.clientX || rect.left + rect.width / 2);
-      const cy = (e.clientY || rect.top + rect.height / 2);
-      ripple.style.left = cx - rect.left - size / 2 + "px";
-      ripple.style.top = cy - rect.top - size / 2 + "px";
-      btn.appendChild(ripple);
-      setTimeout(() => ripple.remove(), 600);
+    for (const a of ACHIEVEMENTS) {
+      const el = document.createElement("div");
+      el.className = "ach";
+      el.dataset.id = a.id;
+      el.textContent = a.icon;
+      el.title = a.name + " — " + a.desc;
+      achEl.appendChild(el);
+    }
 
-      // Confetti, sound, message
-      burst(cx, cy, 25 + combo * 3);
-      beep(300 + combo * 40, 0.1, combo > 5 ? "square" : "sine", 0.12);
-      if (navigator.vibrate) navigator.vibrate(15);
+    let shownUpgradeIds = "";
 
-      msgEl.textContent = randomMessage();
-      msgEl.classList.remove("pop");
-      void msgEl.offsetWidth;
-      msgEl.classList.add("pop");
+    function renderUpgrades() {
+      const available = UPGRADES.filter(u => !state.upgrades.includes(u.id) && u.unlock(state))
+        .sort((a, b) => a.cost - b.cost);
+      const ids = available.map(u => u.id).join(",");
+      if (ids !== shownUpgradeIds) {
+        shownUpgradeIds = ids;
+        upgradesEl.innerHTML = "";
+        for (const u of available) {
+          const btn = document.createElement("button");
+          btn.className = "upgrade";
+          btn.dataset.id = u.id;
+          btn.textContent = u.icon;
+          btn.title = `${u.name} — ${u.desc} (Cost: ${fmt(u.cost)})`;
+          btn.setAttribute("aria-label", btn.title);
+          btn.addEventListener("click", () => buyUpgrade(u));
+          upgradesEl.appendChild(btn);
+        }
+      }
+      for (const btn of upgradesEl.children) {
+        const u = UPGRADES.find(x => x.id === btn.dataset.id);
+        btn.disabled = state.cookies < u.cost;
+      }
+    }
 
-      if (combo > 1) {
-        const hue = Math.min(combo * 12, 360);
-        floatText("x" + combo + "!", cx + (Math.random() * 60 - 30), cy - 40, `hsl(${hue}, 100%, 65%)`);
+    function render() {
+      countEl.textContent = fmt(Math.floor(state.cookies)) + (Math.floor(state.cookies) === 1 ? " cookie" : " cookies");
+      cpsEl.textContent = "per second: " + fmt(cpsNow, 1);
+      document.title = fmt(Math.floor(state.cookies)) + " cookies - Cookie Clicker";
+
+      const buffActive = Date.now() < buffUntil;
+      buffEl.style.display = buffActive ? "inline-block" : "none";
+      if (buffActive) buffEl.textContent = `${buffName} x${buffMult}! ${Math.ceil((buffUntil - Date.now()) / 1000)}s`;
+
+      let prevOwned = true;
+      for (const b of BUILDINGS) {
+        const r = buildingRows[b.id];
+        const have = owned(state, b.id);
+        const cost = costFor(b, have, buyAmount);
+        // Show a building once you own the previous one (or it's affordable-ish).
+        const visible = prevOwned || state.totalBaked >= b.base * 0.5;
+        r.row.style.display = visible ? "" : "none";
+        const locked = have === 0 && state.totalBaked < b.base;
+        r.row.classList.toggle("locked", locked);
+        r.row.disabled = state.cookies < cost;
+        r.cost.textContent = "🍪 " + fmt(cost) + (buyAmount > 1 ? ` (x${buyAmount})` : "");
+        r.owned.textContent = have;
+        const each = b.cps * effects.mult[b.id] * effects.globalMult;
+        r.info.textContent = locked ? "???" : `${b.desc} Each makes ${fmt(each, 1)}/s.`;
+        r.row.title = `${b.name}: ${fmt(buildingCps(b) * effects.globalMult, 1)}/s total`;
+        prevOwned = have > 0;
       }
 
-      // Level up every 10 clicks
-      if (clicks % 10 === 0) levelUp();
+      renderUpgrades();
+
+      const totalBuildings = BUILDINGS.reduce((s, b) => s + owned(state, b.id), 0);
+      statsEl.innerHTML = `
+        <span>Cookies baked (all time)</span><span>${fmt(Math.floor(state.totalBaked))}</span>
+        <span>Cookie clicks</span><span>${fmt(state.totalClicks)}</span>
+        <span>Cookies per click</span><span>${fmt(clickValue(), 1)}</span>
+        <span>Buildings owned</span><span>${fmt(totalBuildings)}</span>
+        <span>Upgrades bought</span><span>${state.upgrades.length} / ${UPGRADES.length}</span>
+        <span>Golden cookies clicked</span><span>${state.goldenClicks}</span>
+        <span>Achievements</span><span>${state.achievements.length} / ${ACHIEVEMENTS.length}</span>
+        <span>Time played</span><span>${fmtTime(Date.now() - state.startedAt)}</span>`;
+    }
+
+    // ================= Actions =================
+    function earn(n) {
+      state.cookies += n;
+      state.totalBaked += n;
+    }
+
+    const cookieBtn = document.getElementById("cookie");
+    cookieBtn.addEventListener("click", (e) => {
+      const v = clickValue();
+      earn(v);
+      state.totalClicks++;
+      const rect = cookieBtn.getBoundingClientRect();
+      const x = e.clientX || rect.left + rect.width / 2;
+      const y = e.clientY || rect.top + rect.height / 2;
+      floatNum("+" + fmt(v, 1), x, y);
+      crumbs(x, y, 8);
+      beep(420 + Math.random() * 80, 0.06, "sine", 0.08);
+      if (navigator.vibrate) navigator.vibrate(8);
     });
+
+    function buyBuilding(b, e) {
+      const have = owned(state, b.id);
+      const cost = costFor(b, have, buyAmount);
+      if (state.cookies < cost) return;
+      state.cookies -= cost;
+      state.buildings[b.id] = have + buyAmount;
+      beep(600, 0.1, "triangle", 0.1);
+      if (e && e.clientX) crumbs(e.clientX, e.clientY, 10, ["#ffcc4d", "#ff8a3d", "#fff6ec"]);
+      if (have === 0) toast(`${b.icon} <b>${b.name}</b> unlocked! ${b.desc}`);
+    }
+
+    function buyUpgrade(u) {
+      if (state.cookies < u.cost || state.upgrades.includes(u.id)) return;
+      state.cookies -= u.cost;
+      state.upgrades.push(u.id);
+      computeEffects();
+      chime();
+      toast(`${u.icon} <b>${u.name}</b> — ${u.desc}`);
+    }
+
+    document.getElementById("buyAmount").addEventListener("click", (e) => {
+      const n = e.target.dataset && e.target.dataset.n;
+      if (!n) return;
+      buyAmount = Number(n);
+      for (const btn of e.currentTarget.children) btn.classList.toggle("active", btn === e.target);
+    });
+
+    document.getElementById("soundToggle").addEventListener("click", (e) => {
+      soundOn = !soundOn;
+      e.currentTarget.textContent = soundOn ? "🔊 Sound" : "🔇 Muted";
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (!confirm("Reset your bakery? All cookies, buildings and upgrades will be lost.")) return;
+      state = freshState();
+      computeEffects();
+      buffUntil = 0;
+      shownUpgradeIds = "";
+      for (const el of achEl.children) el.classList.remove("got");
+      save();
+      toast("🗑️ Bakery reset. Time to start baking again!");
+    });
+
+    // ================= Golden cookie =================
+    const golden = document.getElementById("golden");
+    let nextGolden = Date.now() + randomGoldenDelay();
+    let goldenHideTimer;
+
+    function randomGoldenDelay() {
+      const rate = effects ? effects.goldenRate : 1;
+      return (60000 + Math.random() * 120000) / rate;  // 1-3 minutes
+    }
+
+    function spawnGolden() {
+      golden.style.left = Math.random() * (innerWidth - 90) + 10 + "px";
+      golden.style.top = Math.random() * (innerHeight - 90) + 10 + "px";
+      golden.style.display = "block";
+      golden.style.animation = "none";
+      void golden.offsetWidth;
+      golden.style.animation = "";
+      clearTimeout(goldenHideTimer);
+      goldenHideTimer = setTimeout(() => (golden.style.display = "none"), 12000);
+    }
+
+    golden.addEventListener("click", (e) => {
+      golden.style.display = "none";
+      state.goldenClicks++;
+      const roll = Math.random();
+      if (roll < 0.45) {
+        buffName = "Frenzy"; buffMult = 7; buffUntil = Date.now() + 30000;
+        toast("✨ <b>Frenzy!</b> Cookie production x7 for 30 seconds!");
+      } else if (roll < 0.6) {
+        buffName = "Click Frenzy"; buffMult = 77; buffUntil = Date.now() + 13000;
+        toast("✨ <b>Click Frenzy!</b> Clicks are x77 for 13 seconds!");
+      } else {
+        const gain = Math.max(13, Math.min(state.cookies * 0.15, baseCps() * 900));
+        earn(gain);
+        toast(`✨ <b>Lucky!</b> +${fmt(gain)} cookies!`);
+      }
+      crumbs(e.clientX || innerWidth / 2, e.clientY || innerHeight / 2, 40, ["#ffcc4d", "#fff3b0", "#e09b1a"]);
+      chime();
+    });
+
+    // ================= Main loop =================
+    let lastTick = performance.now();
+    let lastSave = Date.now();
+    let lastNews = 0;
+
+    function checkAchievements() {
+      for (const a of ACHIEVEMENTS) {
+        if (!state.achievements.includes(a.id) && a.test(state)) {
+          state.achievements.push(a.id);
+          toast(`🏆 Achievement unlocked: <b>${a.name}</b><br><small>${a.desc}</small>`);
+          chime();
+        }
+      }
+      for (const el of achEl.children) el.classList.toggle("got", state.achievements.includes(el.dataset.id));
+    }
+
+    function frame(now) {
+      const dt = Math.min((now - lastTick) / 1000, 1);
+      lastTick = now;
+
+      cpsNow = currentCps();
+      earn(cpsNow * dt);
+
+      if (Date.now() > nextGolden) {
+        spawnGolden();
+        nextGolden = Date.now() + randomGoldenDelay();
+      }
+
+      drawParticles();
+      requestAnimationFrame(frame);
+    }
+
+    // Slower UI/bookkeeping tick (keeps the page light on phones)
+    setInterval(() => {
+      render();
+      checkAchievements();
+      if (Date.now() - lastSave > 5000) { save(); lastSave = Date.now(); }
+      if (Date.now() - lastNews > 12000) {
+        lastNews = Date.now();
+        newsEl.textContent = NEWS[Math.floor(Math.random() * NEWS.length)];
+      }
+    }, 100);
+
+    // Catch up when returning to a background tab, and save when leaving.
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) save();
+    });
+    addEventListener("pagehide", save);
+
+    // ================= Start =================
+    load();
+    computeEffects();
+
+    // Offline earnings: half speed while away, up to 2 hours.
+    const away = Math.min((Date.now() - state.lastSaved) / 1000, 7200);
+    if (away > 10 && baseCps() > 0) {
+      const offline = baseCps() * away * 0.5;
+      earn(offline);
+      setTimeout(() => toast(`👋 Welcome back! Your bakery made <b>${fmt(offline)}</b> cookies while you were away.`), 400);
+    }
+
+    render();
+    checkAchievements();
+    requestAnimationFrame(frame);
   </script>
 </body>
 </html>
