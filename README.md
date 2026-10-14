@@ -13,6 +13,10 @@ You stay logged in on a device until you press **Log out** in the 👤 account w
 - Admins see the 🛠️ **Admin** button. Its **Accounts** section lets you set a
   new password for anyone who forgot theirs, make someone else an admin, or
   delete an account.
+- **🎛️ Manage** on any account opens that player's panel: add or set cookies,
+  give buildings, unlock or remove upgrades, achievements and skins, or wipe
+  their bakery. They don't need to be an admin, and the change reaches their
+  game within about 30 seconds (or the next time they open it).
 - After 10 wrong passwords in a row, an account is locked for 5 minutes.
 
 ## How it's hosted (Netlify)
