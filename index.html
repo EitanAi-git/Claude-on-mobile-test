@@ -211,6 +211,94 @@
     .upgrade:hover:not(:disabled) { transform: translateY(-2px); }
     .upgrade:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(0.6); }
 
+    .upgrade[data-tier]::after {
+      content: attr(data-tier);
+      position: absolute;
+      right: 3px;
+      bottom: 2px;
+      font-size: 0.6rem;
+      font-weight: 900;
+      color: var(--gold);
+      text-shadow: 0 1px 2px #000;
+    }
+
+    /* ---------- Admin panel ---------- */
+    #admin {
+      position: fixed;
+      z-index: 9;
+      inset: 0;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+    }
+
+    #admin.open { display: flex; }
+
+    @media (min-width: 820px) { #admin { align-items: center; } }
+
+    .admin-box {
+      width: 100%;
+      max-width: 520px;
+      max-height: 85vh;
+      overflow-y: auto;
+      background: #24160d;
+      border: 1px solid #ff6b6b;
+      border-radius: 18px 18px 0 0;
+      padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    @media (min-width: 820px) { .admin-box { border-radius: 18px; } }
+
+    .admin-box h3 {
+      margin: 0 0 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #ff9b9b;
+    }
+
+    .admin-box h4 {
+      margin: 14px 0 6px;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .admin-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .admin-grid button, .admin-row button {
+      background: rgba(255, 107, 107, 0.12);
+      border: 1px solid rgba(255, 107, 107, 0.4);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .admin-grid button:hover, .admin-row button:hover { background: rgba(255, 107, 107, 0.25); }
+    .admin-grid button.active { background: #ff6b6b; color: #24160d; font-weight: 800; }
+
+    .admin-row { display: flex; gap: 6px; }
+
+    .admin-row input, .admin-row select {
+      flex: 1;
+      min-width: 0;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 0.9rem;
+    }
+
+    .admin-row select option { background: #24160d; }
+
+    .admin-note { font-size: 0.75rem; color: var(--muted); margin: 0; }
+
     .building {
       display: grid;
       grid-template-columns: 48px 1fr auto;
@@ -386,6 +474,7 @@
       <div class="row-btns">
         <button class="small-btn" id="soundToggle">🔊 Sound</button>
         <button class="small-btn" id="resetBtn">🗑️ Reset</button>
+        <button class="small-btn" id="adminBtn">🛠️ Admin</button>
       </div>
     </section>
 
@@ -428,6 +517,76 @@
 
   <div id="toasts"></div>
 
+  <div id="admin" role="dialog" aria-modal="true" aria-label="Admin panel">
+    <div class="admin-box">
+      <h3><span>🛠️ Admin Panel</span><button class="small-btn" id="adminClose">✕ Close</button></h3>
+      <p class="admin-note">For testing. Press <b>A</b> on a keyboard to toggle.</p>
+
+      <h4>Add cookies</h4>
+      <div class="admin-grid" id="adminAdd">
+        <button data-amt="1e3">+1K</button>
+        <button data-amt="1e6">+1M</button>
+        <button data-amt="1e9">+1B</button>
+        <button data-amt="1e12">+1T</button>
+        <button data-amt="1e15">+1Qa</button>
+        <button data-amt="1e18">+1Qi</button>
+      </div>
+      <div class="admin-row" style="margin-top: 6px">
+        <input id="adminSetInput" type="number" min="0" placeholder="Set cookies to…" inputmode="numeric">
+        <button id="adminSet">Set</button>
+      </div>
+
+      <h4>Buildings</h4>
+      <div class="admin-row">
+        <select id="adminBuilding"></select>
+        <button data-bn="1">+1</button>
+        <button data-bn="10">+10</button>
+        <button data-bn="100">+100</button>
+      </div>
+      <div class="admin-grid" style="margin-top: 6px">
+        <button id="adminAllBuildings">+10 of every building</button>
+        <button id="adminClearBuildings">Remove all buildings</button>
+      </div>
+
+      <h4>Upgrades &amp; achievements</h4>
+      <div class="admin-grid">
+        <button id="adminAllUpgrades">Unlock all upgrades</button>
+        <button id="adminClearUpgrades">Remove all upgrades</button>
+        <button id="adminAllAch">Unlock all achievements</button>
+        <button id="adminClearAch">Clear achievements</button>
+      </div>
+
+      <h4>Golden cookies</h4>
+      <div class="admin-grid">
+        <button id="adminSpawnGolden">Spawn golden cookie</button>
+        <button data-golden="frenzy">Frenzy</button>
+        <button data-golden="clickFrenzy">Click Frenzy</button>
+        <button data-golden="lucky">Lucky</button>
+        <button id="adminEndBuff">End buff</button>
+      </div>
+
+      <h4>Time</h4>
+      <div class="admin-grid" id="adminSpeed">
+        <button data-speed="1" class="active">Speed x1</button>
+        <button data-speed="10">x10</button>
+        <button data-speed="100">x100</button>
+        <button data-speed="1000">x1000</button>
+      </div>
+      <div class="admin-grid" style="margin-top: 6px">
+        <button data-skip="60">Skip 1 min</button>
+        <button data-skip="3600">Skip 1 hour</button>
+        <button data-skip="86400">Skip 1 day</button>
+      </div>
+
+      <h4>Save</h4>
+      <div class="admin-grid">
+        <button id="adminSave">Save now</button>
+        <button id="adminExport">Copy save to clipboard</button>
+        <button id="adminImport">Import save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ================= Game data =================
     const BUILDINGS = [
@@ -440,6 +599,13 @@
       { id: "temple",  name: "Temple",       icon: "🛕", base: 20000000,    cps: 7800,   desc: "Full of precious, ancient chocolate." },
       { id: "rocket",  name: "Rocket",       icon: "🚀", base: 330000000,   cps: 44000,  desc: "Brings cookies from the cookie planet." },
       { id: "portal",  name: "Portal",       icon: "🌀", base: 5100000000,  cps: 260000, desc: "Opens a door to the Cookieverse." },
+      { id: "timemachine", name: "Time Machine", icon: "⏳", base: 75e9,  cps: 1.6e6, desc: "Brings back cookies before they were eaten." },
+      { id: "antimatter",  name: "Antimatter Condenser", icon: "⚛️", base: 1e12, cps: 1e7, desc: "Turns antimatter into cookies. Somehow." },
+      { id: "prism",       name: "Prism",        icon: "🔮", base: 14e12,  cps: 6.5e7, desc: "Converts light itself into cookies." },
+      { id: "chancemaker", name: "Chancemaker",  icon: "🎲", base: 170e12, cps: 4.3e8, desc: "Generates cookies out of thin luck." },
+      { id: "fractal",     name: "Fractal Engine", icon: "❄️", base: 2.1e15, cps: 2.9e9, desc: "Makes cookies out of smaller cookies." },
+      { id: "dragon",      name: "Cookie Dragon", icon: "🐉", base: 26e15, cps: 2.1e10, desc: "Hoards cookies. Then breathes out even more." },
+      { id: "singularity", name: "Singularity",  icon: "🕳️", base: 3.1e17, cps: 1.5e11, desc: "Everything collapses into cookies." },
     ];
 
     // Upgrades: unlock when a condition is met, then can be bought once.
@@ -447,18 +613,47 @@
       { id: "click1", icon: "🖱️", name: "Reinforced Finger",  cost: 100,      desc: "Clicking is twice as strong.",           unlock: s => s.totalClicks >= 15,             apply: e => e.clickMult *= 2 },
       { id: "click2", icon: "💪", name: "Strong Arm",         cost: 5000,     desc: "Clicking is twice as strong.",           unlock: s => s.totalClicks >= 200,            apply: e => e.clickMult *= 2 },
       { id: "click3", icon: "⚡", name: "Lightning Tap",      cost: 100000,   desc: "Clicks also earn 1% of your cookies/sec.", unlock: s => s.totalClicks >= 1000,         apply: e => e.clickCpsPct += 0.01 },
-      { id: "cur1",   icon: "👆", name: "Ambidextrous",       cost: 500,      desc: "Cursors are twice as efficient.",        unlock: s => owned(s, "cursor") >= 1,        apply: e => e.mult.cursor *= 2 },
-      { id: "cur2",   icon: "🖐️", name: "Thousand Fingers",   cost: 10000,    desc: "Cursors are twice as efficient.",        unlock: s => owned(s, "cursor") >= 10,       apply: e => e.mult.cursor *= 2 },
-      { id: "gran1",  icon: "🧓", name: "Forwards from Grandma", cost: 1000,  desc: "Grandmas are twice as efficient.",       unlock: s => owned(s, "grandma") >= 1,       apply: e => e.mult.grandma *= 2 },
-      { id: "gran2",  icon: "🍪", name: "Steel Rolling Pins", cost: 50000,    desc: "Grandmas are twice as efficient.",       unlock: s => owned(s, "grandma") >= 10,      apply: e => e.mult.grandma *= 2 },
-      { id: "farm1",  icon: "🌱", name: "Cheap Hoes",         cost: 11000,    desc: "Farms are twice as efficient.",          unlock: s => owned(s, "farm") >= 1,          apply: e => e.mult.farm *= 2 },
-      { id: "mine1",  icon: "💎", name: "Sugar Gas",          cost: 120000,   desc: "Mines are twice as efficient.",          unlock: s => owned(s, "mine") >= 1,          apply: e => e.mult.mine *= 2 },
-      { id: "fac1",   icon: "⚙️", name: "Sturdier Belts",     cost: 1300000,  desc: "Factories are twice as efficient.",      unlock: s => owned(s, "factory") >= 1,       apply: e => e.mult.factory *= 2 },
-      { id: "bank1",  icon: "💳", name: "Cookie Credit Cards", cost: 14000000, desc: "Banks are twice as efficient.",         unlock: s => owned(s, "bank") >= 1,          apply: e => e.mult.bank *= 2 },
+      { id: "click4", icon: "🦾", name: "Bionic Hand",        cost: 1e7,      desc: "Clicking is 3x as strong.",              unlock: s => s.totalClicks >= 2500,           apply: e => e.clickMult *= 3 },
+      { id: "click5", icon: "🌩️", name: "Thunder Tap",        cost: 1e9,      desc: "Clicks also earn 2% of your cookies/sec.", unlock: s => s.totalClicks >= 5000,         apply: e => e.clickCpsPct += 0.02 },
+      { id: "click6", icon: "👑", name: "Royal Finger",       cost: 1e12,     desc: "Clicks also earn 5% of your cookies/sec.", unlock: s => s.totalClicks >= 10000,        apply: e => e.clickCpsPct += 0.05 },
       { id: "all1",   icon: "🍫", name: "Extra Chocolate",    cost: 1000000,  desc: "All production +10%.",                   unlock: s => s.totalBaked >= 500000,         apply: e => e.globalMult *= 1.1 },
       { id: "all2",   icon: "🥛", name: "Cookie Milk",        cost: 50000000, desc: "All production +25%.",                   unlock: s => s.totalBaked >= 20000000,       apply: e => e.globalMult *= 1.25 },
+      { id: "all3",   icon: "🧈", name: "Golden Butter",      cost: 5e9,      desc: "All production +50%.",                   unlock: s => s.totalBaked >= 2e9,            apply: e => e.globalMult *= 1.5 },
+      { id: "all4",   icon: "🍯", name: "Cosmic Honey",       cost: 5e12,     desc: "All production doubled.",                unlock: s => s.totalBaked >= 2e12,           apply: e => e.globalMult *= 2 },
+      { id: "all5",   icon: "🌟", name: "Starlight Sugar",    cost: 5e15,     desc: "All production tripled.",                unlock: s => s.totalBaked >= 2e15,           apply: e => e.globalMult *= 3 },
+      { id: "kitten1", icon: "🐱", name: "Kitten Helpers",    cost: 9e6,      desc: "+3% production per achievement.",        unlock: s => s.achievements.length >= 8,     apply: e => e.globalMult *= 1 + 0.03 * state.achievements.length },
+      { id: "kitten2", icon: "😼", name: "Kitten Managers",   cost: 9e10,     desc: "+5% production per achievement.",        unlock: s => s.achievements.length >= 16,    apply: e => e.globalMult *= 1 + 0.05 * state.achievements.length },
       { id: "lucky",  icon: "🍀", name: "Lucky Day",          cost: 77777,    desc: "Golden cookies appear twice as often.",  unlock: s => s.goldenClicks >= 3,            apply: e => e.goldenRate *= 2 },
+      { id: "lucky2", icon: "🌈", name: "Serendipity",        cost: 7777777,  desc: "Golden cookies appear twice as often.",  unlock: s => s.goldenClicks >= 10,           apply: e => e.goldenRate *= 2 },
+      { id: "lucky3", icon: "⏰", name: "Get Lucky",          cost: 7.7e9,    desc: "Golden cookie buffs last twice as long.", unlock: s => s.goldenClicks >= 25,          apply: e => e.buffTime *= 2 },
     ];
+
+    // Every building gets 5 tiers of "twice as efficient" upgrades.
+    const TIERS = [
+      { need: 1,   costX: 10,    name: "I" },
+      { need: 5,   costX: 50,    name: "II" },
+      { need: 25,  costX: 500,   name: "III" },
+      { need: 50,  costX: 5e4,   name: "IV" },
+      { need: 100, costX: 5e6,   name: "V" },
+    ];
+    for (const b of BUILDINGS) {
+      TIERS.forEach((t, i) => UPGRADES.push({
+        id: `${b.id}_${i + 1}`,
+        icon: b.icon,
+        tier: t.name,
+        name: `${b.name} Boost ${t.name}`,
+        cost: b.base * t.costX,
+        desc: `${b.name}s are twice as efficient.`,
+        unlock: s => owned(s, b.id) >= t.need,
+        apply: e => e.mult[b.id] *= 2,
+      }));
+    }
+
+    // Old save IDs from the first version, mapped to the new generated ones.
+    const UPGRADE_RENAMES = {
+      cur1: "cursor_1", cur2: "cursor_2", gran1: "grandma_1", gran2: "grandma_2",
+      farm1: "farm_1", mine1: "mine_1", fac1: "factory_1", bank1: "bank_1",
+    };
 
     const ACHIEVEMENTS = [
       { id: "c1",    icon: "🍪", name: "Wake and Bake",     desc: "Bake 1 cookie.",                   test: s => s.totalBaked >= 1 },
@@ -473,6 +668,18 @@
       { id: "gran",  icon: "👵", name: "Grandma's Cookies", desc: "Own 10 grandmas.",                 test: s => owned(s, "grandma") >= 10 },
       { id: "gold1", icon: "✨", name: "Golden Touch",      desc: "Click a golden cookie.",           test: s => s.goldenClicks >= 1 },
       { id: "all",   icon: "🏆", name: "Collector",         desc: "Own at least 1 of every building.", test: s => BUILDINGS.every(b => owned(s, b.id) >= 1) },
+      { id: "c1t",   icon: "🪐", name: "Cookie Universe",   desc: "Bake 1 trillion cookies.",         test: s => s.totalBaked >= 1e12 },
+      { id: "c1qa",  icon: "♾️", name: "Infinite Dough",    desc: "Bake 1 quadrillion cookies.",      test: s => s.totalBaked >= 1e15 },
+      { id: "clk5k", icon: "🖲️", name: "Click Master",      desc: "Click 5,000 times.",               test: s => s.totalClicks >= 5000 },
+      { id: "cps1m", icon: "🚄", name: "Cookie Express",    desc: "Reach 1 million cookies per second.", test: s => cpsNow >= 1e6 },
+      { id: "cps1b", icon: "🛸", name: "Warp Speed Baking", desc: "Reach 1 billion cookies per second.", test: s => cpsNow >= 1e9 },
+      { id: "b100",  icon: "🏘️", name: "Cookie Town",       desc: "Own 100 buildings.",               test: s => totalOwned(s) >= 100 },
+      { id: "b500",  icon: "🏙️", name: "Cookie City",       desc: "Own 500 buildings.",               test: s => totalOwned(s) >= 500 },
+      { id: "up20",  icon: "📈", name: "Upgrader",          desc: "Buy 20 upgrades.",                 test: s => s.upgrades.length >= 20 },
+      { id: "up50",  icon: "🧪", name: "Mad Scientist",     desc: "Buy 50 upgrades.",                 test: s => s.upgrades.length >= 50 },
+      { id: "gold10",icon: "💰", name: "Gold Rush",         desc: "Click 10 golden cookies.",         test: s => s.goldenClicks >= 10 },
+      { id: "dragon",icon: "🐉", name: "Dragon Tamer",      desc: "Own a Cookie Dragon.",             test: s => owned(s, "dragon") >= 1 },
+      { id: "sing",  icon: "🕳️", name: "Event Horizon",     desc: "Own a Singularity.",               test: s => owned(s, "singularity") >= 1 },
     ];
 
     const NEWS = [
@@ -514,10 +721,13 @@
     let buffMult = 1;
     let buffName = "";
 
+    let gameSpeed = 1; // admin panel time multiplier
+
     function owned(s, id) { return s.buildings[id] || 0; }
+    function totalOwned(s) { return BUILDINGS.reduce((sum, b) => sum + owned(s, b.id), 0); }
 
     function computeEffects() {
-      const e = { clickMult: 1, clickCpsPct: 0, globalMult: 1, goldenRate: 1, mult: {} };
+      const e = { clickMult: 1, clickCpsPct: 0, globalMult: 1, goldenRate: 1, buffTime: 1, mult: {} };
       for (const b of BUILDINGS) e.mult[b.id] = 1;
       for (const u of UPGRADES) if (state.upgrades.includes(u.id)) u.apply(e);
       effects = e;
@@ -548,7 +758,8 @@
     }
 
     // ================= Formatting =================
-    const SUFFIXES = ["", " thousand", " million", " billion", " trillion", " quadrillion", " quintillion", " sextillion"];
+    const SUFFIXES = ["", " thousand", " million", " billion", " trillion", " quadrillion", " quintillion", " sextillion",
+      " septillion", " octillion", " nonillion", " decillion"];
 
     function fmt(n, decimals = 0) {
       if (n < 1000) return n.toFixed(n < 10 && decimals ? decimals : 0).replace(/\.0$/, "");
@@ -569,11 +780,17 @@
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
     }
 
+    function loadFrom(json) {
+      const loaded = Object.assign(freshState(), JSON.parse(json));
+      const known = new Set(UPGRADES.map(u => u.id));
+      loaded.upgrades = [...new Set(loaded.upgrades.map(id => UPGRADE_RENAMES[id] || id))].filter(id => known.has(id));
+      state = loaded;
+    }
+
     function load() {
       try {
         const raw = localStorage.getItem(SAVE_KEY);
-        if (!raw) return;
-        state = Object.assign(freshState(), JSON.parse(raw));
+        if (raw) loadFrom(raw);
       } catch (e) { state = freshState(); }
     }
 
@@ -726,6 +943,7 @@
           btn.className = "upgrade";
           btn.dataset.id = u.id;
           btn.textContent = u.icon;
+          if (u.tier) btn.dataset.tier = u.tier;
           btn.title = `${u.name} — ${u.desc} (Cost: ${fmt(u.cost)})`;
           btn.setAttribute("aria-label", btn.title);
           btn.addEventListener("click", () => buyUpgrade(u));
@@ -868,19 +1086,166 @@
       golden.style.display = "none";
       state.goldenClicks++;
       const roll = Math.random();
-      if (roll < 0.45) {
-        buffName = "Frenzy"; buffMult = 7; buffUntil = Date.now() + 30000;
-        toast("✨ <b>Frenzy!</b> Cookie production x7 for 30 seconds!");
-      } else if (roll < 0.6) {
-        buffName = "Click Frenzy"; buffMult = 77; buffUntil = Date.now() + 13000;
-        toast("✨ <b>Click Frenzy!</b> Clicks are x77 for 13 seconds!");
+      goldenEffect(roll < 0.45 ? "frenzy" : roll < 0.6 ? "clickFrenzy" : "lucky");
+      crumbs(e.clientX || innerWidth / 2, e.clientY || innerHeight / 2, 40, ["#ffcc4d", "#fff3b0", "#e09b1a"]);
+    });
+
+    function goldenEffect(kind) {
+      const t = effects.buffTime;
+      if (kind === "frenzy") {
+        buffName = "Frenzy"; buffMult = 7; buffUntil = Date.now() + 30000 * t;
+        toast(`✨ <b>Frenzy!</b> Cookie production x7 for ${30 * t} seconds!`);
+      } else if (kind === "clickFrenzy") {
+        buffName = "Click Frenzy"; buffMult = 77; buffUntil = Date.now() + 13000 * t;
+        toast(`✨ <b>Click Frenzy!</b> Clicks are x77 for ${13 * t} seconds!`);
       } else {
         const gain = Math.max(13, Math.min(state.cookies * 0.15, baseCps() * 900));
         earn(gain);
         toast(`✨ <b>Lucky!</b> +${fmt(gain)} cookies!`);
       }
-      crumbs(e.clientX || innerWidth / 2, e.clientY || innerHeight / 2, 40, ["#ffcc4d", "#fff3b0", "#e09b1a"]);
       chime();
+    }
+
+    // ================= Admin panel =================
+    const adminEl = document.getElementById("admin");
+    const adminBuildingSel = document.getElementById("adminBuilding");
+
+    for (const b of BUILDINGS) {
+      const opt = document.createElement("option");
+      opt.value = b.id;
+      opt.textContent = `${b.icon} ${b.name}`;
+      adminBuildingSel.appendChild(opt);
+    }
+
+    function toggleAdmin(open = !adminEl.classList.contains("open")) {
+      adminEl.classList.toggle("open", open);
+    }
+
+    function adminDone(msg) {
+      computeEffects();
+      shownUpgradeIds = "";
+      render();
+      toast("🛠️ " + msg);
+    }
+
+    document.getElementById("adminBtn").addEventListener("click", () => toggleAdmin(true));
+    document.getElementById("adminClose").addEventListener("click", () => toggleAdmin(false));
+    adminEl.addEventListener("click", (e) => { if (e.target === adminEl) toggleAdmin(false); });
+    addEventListener("keydown", (e) => {
+      if (e.target.matches("input, select, textarea")) return;
+      if (e.key === "a" || e.key === "A") toggleAdmin();
+      if (e.key === "Escape") toggleAdmin(false);
+    });
+
+    document.getElementById("adminAdd").addEventListener("click", (e) => {
+      const amt = Number(e.target.dataset.amt);
+      if (!amt) return;
+      earn(amt);
+      adminDone(`Added ${fmt(amt)} cookies.`);
+    });
+
+    document.getElementById("adminSet").addEventListener("click", () => {
+      const v = Number(document.getElementById("adminSetInput").value);
+      if (!Number.isFinite(v) || v < 0) return toast("🛠️ Enter a number of 0 or more.");
+      state.cookies = v;
+      state.totalBaked = Math.max(state.totalBaked, v);
+      adminDone(`Cookies set to ${fmt(v)}.`);
+    });
+
+    adminEl.querySelectorAll("[data-bn]").forEach(btn => btn.addEventListener("click", () => {
+      const b = BUILDINGS.find(x => x.id === adminBuildingSel.value);
+      const n = Number(btn.dataset.bn);
+      state.buildings[b.id] = owned(state, b.id) + n;
+      adminDone(`Gave ${n} ${b.name}${n > 1 ? "s" : ""}.`);
+    }));
+
+    document.getElementById("adminAllBuildings").addEventListener("click", () => {
+      for (const b of BUILDINGS) state.buildings[b.id] = owned(state, b.id) + 10;
+      adminDone("Gave 10 of every building.");
+    });
+
+    document.getElementById("adminClearBuildings").addEventListener("click", () => {
+      state.buildings = {};
+      adminDone("Removed all buildings.");
+    });
+
+    document.getElementById("adminAllUpgrades").addEventListener("click", () => {
+      state.upgrades = UPGRADES.map(u => u.id);
+      adminDone(`Unlocked all ${UPGRADES.length} upgrades.`);
+    });
+
+    document.getElementById("adminClearUpgrades").addEventListener("click", () => {
+      state.upgrades = [];
+      adminDone("Removed all upgrades.");
+    });
+
+    document.getElementById("adminAllAch").addEventListener("click", () => {
+      state.achievements = ACHIEVEMENTS.map(a => a.id);
+      for (const el of achEl.children) el.classList.add("got");
+      adminDone("Unlocked all achievements.");
+    });
+
+    document.getElementById("adminClearAch").addEventListener("click", () => {
+      state.achievements = [];
+      for (const el of achEl.children) el.classList.remove("got");
+      adminDone("Cleared achievements. (They re-unlock if you still qualify.)");
+    });
+
+    document.getElementById("adminSpawnGolden").addEventListener("click", () => {
+      toggleAdmin(false);
+      spawnGolden();
+    });
+
+    adminEl.querySelectorAll("[data-golden]").forEach(btn => btn.addEventListener("click", () => {
+      goldenEffect(btn.dataset.golden);
+    }));
+
+    document.getElementById("adminEndBuff").addEventListener("click", () => {
+      buffUntil = 0;
+      adminDone("Buff ended.");
+    });
+
+    document.getElementById("adminSpeed").addEventListener("click", (e) => {
+      const s = Number(e.target.dataset.speed);
+      if (!s) return;
+      gameSpeed = s;
+      for (const btn of e.currentTarget.children) btn.classList.toggle("active", btn === e.target);
+      toast(`🛠️ Game speed x${s}.`);
+    });
+
+    adminEl.querySelectorAll("[data-skip]").forEach(btn => btn.addEventListener("click", () => {
+      const secs = Number(btn.dataset.skip);
+      const gain = baseCps() * secs;
+      earn(gain);
+      adminDone(`Skipped ${btn.textContent.replace("Skip ", "")}: +${fmt(gain)} cookies.`);
+    }));
+
+    document.getElementById("adminSave").addEventListener("click", () => {
+      save();
+      toast("🛠️ Game saved.");
+    });
+
+    document.getElementById("adminExport").addEventListener("click", async () => {
+      const data = JSON.stringify(state);
+      try {
+        await navigator.clipboard.writeText(data);
+        toast("🛠️ Save copied to clipboard.");
+      } catch (e) {
+        prompt("Copy your save:", data);
+      }
+    });
+
+    document.getElementById("adminImport").addEventListener("click", () => {
+      const data = prompt("Paste a save:");
+      if (!data) return;
+      try {
+        loadFrom(data);
+        for (const el of achEl.children) el.classList.toggle("got", state.achievements.includes(el.dataset.id));
+        save();
+        adminDone("Save imported.");
+      } catch (e) {
+        toast("🛠️ That save couldn't be read.");
+      }
     });
 
     // ================= Main loop =================
@@ -892,6 +1257,7 @@
       for (const a of ACHIEVEMENTS) {
         if (!state.achievements.includes(a.id) && a.test(state)) {
           state.achievements.push(a.id);
+          computeEffects(); // kitten upgrades scale with achievements
           toast(`🏆 Achievement unlocked: <b>${a.name}</b><br><small>${a.desc}</small>`);
           chime();
         }
@@ -900,7 +1266,7 @@
     }
 
     function frame(now) {
-      const dt = Math.min((now - lastTick) / 1000, 1);
+      const dt = Math.min((now - lastTick) / 1000, 1) * gameSpeed;
       lastTick = now;
 
       cpsNow = currentCps();
