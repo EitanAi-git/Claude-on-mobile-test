@@ -98,6 +98,7 @@
       border-radius: 50%;
       background: radial-gradient(circle, rgba(255, 204, 77, 0.35), transparent 65%);
       animation: pulse 3s ease-in-out infinite;
+      pointer-events: none;
     }
 
     @keyframes pulse {
@@ -371,6 +372,18 @@
       font-size: 0.85rem;
     }
 
+    #speed {
+      display: none;
+      background: rgba(255, 107, 107, 0.15);
+      border: 1px solid #ff6b6b;
+      color: #ff9b9b;
+      font-weight: 800;
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
     /* ---------- Toasts ---------- */
     #toasts {
       position: fixed;
@@ -439,6 +452,7 @@
       <div id="count">0 cookies</div>
       <div id="cps">per second: 0</div>
       <div id="buff"></div>
+      <button id="speed" title="Tap to go back to normal speed"></button>
 
       <div class="cookie-wrap">
         <button id="cookie" aria-label="Click the cookie">
@@ -890,6 +904,7 @@
     // ================= UI =================
     const countEl = document.getElementById("count");
     const cpsEl = document.getElementById("cps");
+    const speedEl = document.getElementById("speed");
     const buffEl = document.getElementById("buff");
     const buildingsEl = document.getElementById("buildings");
     const upgradesEl = document.getElementById("upgrades");
@@ -959,6 +974,8 @@
     function render() {
       countEl.textContent = fmt(Math.floor(state.cookies)) + (Math.floor(state.cookies) === 1 ? " cookie" : " cookies");
       cpsEl.textContent = "per second: " + fmt(cpsNow, 1);
+      speedEl.style.display = gameSpeed === 1 ? "none" : "inline-block";
+      speedEl.textContent = `⏩ Admin speed x${gameSpeed}`;
       document.title = fmt(Math.floor(state.cookies)) + " cookies - Cookie Clicker";
 
       const buffActive = Date.now() < buffUntil;
@@ -1055,6 +1072,7 @@
       state = freshState();
       computeEffects();
       buffUntil = 0;
+      setGameSpeed(1);
       shownUpgradeIds = "";
       for (const el of achEl.children) el.classList.remove("got");
       save();
@@ -1205,12 +1223,23 @@
       adminDone("Buff ended.");
     });
 
+    function setGameSpeed(s) {
+      gameSpeed = s;
+      for (const btn of document.getElementById("adminSpeed").children) {
+        btn.classList.toggle("active", Number(btn.dataset.speed) === s);
+      }
+    }
+
     document.getElementById("adminSpeed").addEventListener("click", (e) => {
       const s = Number(e.target.dataset.speed);
       if (!s) return;
-      gameSpeed = s;
-      for (const btn of e.currentTarget.children) btn.classList.toggle("active", btn === e.target);
+      setGameSpeed(s);
       toast(`🛠️ Game speed x${s}.`);
+    });
+
+    speedEl.addEventListener("click", () => {
+      setGameSpeed(1);
+      toast("🛠️ Back to normal speed.");
     });
 
     adminEl.querySelectorAll("[data-skip]").forEach(btn => btn.addEventListener("click", () => {
