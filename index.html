@@ -944,7 +944,7 @@
       achEl.appendChild(el);
     }
 
-    let shownUpgradeIds = "";
+    let shownUpgradeIds = null; // null = force a redraw
 
     function renderUpgrades() {
       const available = UPGRADES.filter(u => !state.upgrades.includes(u.id) && u.unlock(state))
@@ -1073,7 +1073,7 @@
       computeEffects();
       buffUntil = 0;
       setGameSpeed(1);
-      shownUpgradeIds = "";
+      shownUpgradeIds = null;
       for (const el of achEl.children) el.classList.remove("got");
       save();
       toast("🗑️ Bakery reset. Time to start baking again!");
@@ -1141,7 +1141,7 @@
 
     function adminDone(msg) {
       computeEffects();
-      shownUpgradeIds = "";
+      shownUpgradeIds = null;
       render();
       toast("🛠️ " + msg);
     }
