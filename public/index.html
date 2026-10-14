@@ -242,6 +242,7 @@
     }
 
     .modal.open { display: flex; }
+    #player { z-index: 10; } /* opens on top of the admin panel */
 
     @media (min-width: 820px) { .modal { align-items: center; } }
 
@@ -680,6 +681,53 @@
     </form>
   </div>
 
+  <div id="player" class="modal" role="dialog" aria-modal="true" aria-label="Manage player">
+    <div class="admin-box">
+      <h3><span id="playerTitle">🎛️ Player</span><button class="small-btn" id="playerClose">✕ Close</button></h3>
+      <p class="admin-note">Changes reach their game within about 30 seconds, or as soon as they next open it.</p>
+      <div class="stats-grid" id="playerStats" style="margin-top: 10px"></div>
+
+      <h4>Cookies</h4>
+      <div class="admin-grid" id="playerAdd">
+        <button data-amt="1e3">+1K</button>
+        <button data-amt="1e6">+1M</button>
+        <button data-amt="1e9">+1B</button>
+        <button data-amt="1e12">+1T</button>
+        <button data-amt="1e15">+1Qa</button>
+      </div>
+      <div class="admin-row" style="margin-top: 6px">
+        <input id="playerSetInput" type="number" min="0" placeholder="Set cookies to…" inputmode="numeric">
+        <button id="playerSet">Set</button>
+      </div>
+
+      <h4>Buildings</h4>
+      <div class="admin-row">
+        <select id="playerBuilding"></select>
+        <button data-pbn="1">+1</button>
+        <button data-pbn="10">+10</button>
+        <button data-pbn="100">+100</button>
+      </div>
+      <div class="admin-grid" style="margin-top: 6px">
+        <button id="playerAllBuildings">+10 of every building</button>
+        <button id="playerClearBuildings">Remove all buildings</button>
+      </div>
+
+      <h4>Unlocks</h4>
+      <div class="admin-grid">
+        <button id="playerAllUpgrades">Unlock all upgrades</button>
+        <button id="playerClearUpgrades">Remove all upgrades</button>
+        <button id="playerAllAch">Unlock all achievements</button>
+        <button id="playerClearAch">Clear achievements</button>
+        <button id="playerAllSkins">Unlock all skins</button>
+      </div>
+
+      <h4>Wipe</h4>
+      <div class="admin-grid">
+        <button id="playerWipe">🗑️ Wipe their bakery</button>
+      </div>
+    </div>
+  </div>
+
   <div id="account" class="modal" role="dialog" aria-modal="true" aria-label="Account">
     <div class="admin-box account-box">
       <h3><span id="accountTitle">👤 Account</span><button class="small-btn" id="accountClose">✕ Close</button></h3>
@@ -1063,6 +1111,7 @@
         achievements: [],
         skin: "classic",
         skins: ["classic"],
+        adminRev: 0,
         startedAt: Date.now(),
         lastSaved: Date.now(),
       };
@@ -1146,6 +1195,10 @@
     // Parse a save and keep only valid values, so a broken or hand-edited
     // save can't put strings, negatives, NaN or unknown IDs into the game.
     function loadFrom(json) {
+      state = parseSave(json);
+    }
+
+    function parseSave(json) {
       const raw = JSON.parse(json);
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Not a save");
 
@@ -1170,7 +1223,15 @@
       s.achievements = idList(raw.achievements, new Set(ACHIEVEMENTS.map(a => a.id)));
       s.skins = [...new Set(["classic", ...idList(raw.skins, new Set(SKINS.map(k => k.id)))])];
       s.skin = s.skins.includes(raw.skin) ? raw.skin : "classic";
-      state = s;
+      s.adminRev = Math.floor(num(raw.adminRev)); // how many admin edits this save has seen
+      return s;
+    }
+
+    // Replace the game with a new state from the player's own action (reset,
+    // import) while keeping the admin version, so the server still accepts it.
+    function replaceState(next) {
+      next.adminRev = state.adminRev || 0;
+      state = next;
     }
 
     // Load the newest copy: the account's cloud save, or this device's copy
@@ -1273,14 +1334,20 @@
       setTimeout(() => { el.remove(); floatCount--; }, 1000);
     }
 
-    function toast(html) {
+    // sticky toasts stay up longer and aren't pushed out by a burst of others
+    function toast(html, sticky = false) {
       const el = document.createElement("div");
       el.className = "toast";
       el.innerHTML = html;
+      if (sticky) el.style.animation = "toastIn 0.3s ease-out, toastOut 0.4s ease-in 5.6s forwards";
+      el.dataset.sticky = sticky ? "1" : "";
       const box = document.getElementById("toasts");
       box.appendChild(el);
-      while (box.children.length > 3) box.firstChild.remove();
-      setTimeout(() => el.remove(), 3700);
+      while (box.children.length > 3) {
+        const oldest = [...box.children].find(t => !t.dataset.sticky) || box.firstChild;
+        oldest.remove();
+      }
+      setTimeout(() => el.remove(), sticky ? 6100 : 3700);
     }
 
     // ================= UI =================
@@ -1504,7 +1571,7 @@
 
     document.getElementById("resetBtn").addEventListener("click", () => {
       if (!confirm("Reset your bakery? All cookies, buildings and upgrades will be lost.")) return;
-      state = freshState();
+      replaceState(freshState());
       computeEffects();
       buffUntil = 0;
       setGameSpeed(1);
@@ -1593,7 +1660,7 @@
       if (e.target.matches("input, select, textarea")) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return; // don't hijack Ctrl+A etc.
       if ((e.key === "a" || e.key === "A") && auth && auth.isAdmin) toggleAdmin();
-      if (e.key === "Escape") { toggleAdmin(false); toggleAccount(false); }
+      if (e.key === "Escape") { toggleAdmin(false); toggleAccount(false); playerEl.classList.remove("open"); }
     });
 
     document.getElementById("adminAdd").addEventListener("click", (e) => {
@@ -1715,7 +1782,7 @@
       const data = prompt("Paste a save:");
       if (!data) return;
       try {
-        loadFrom(data);
+        replaceState(parseSave(data));
         for (const el of achEl.children) el.classList.toggle("got", state.achievements.includes(el.dataset.id));
         save();
         adminDone("Save imported.");
@@ -1919,6 +1986,7 @@
       if (!res.ok) {
         const err = new Error(data.error || "Something went wrong.");
         err.status = res.status;
+        err.data = data;
         throw err;
       }
       return data;
@@ -1935,8 +2003,22 @@
         setCloudStatus(`☁️ Progress saved to your account at ${new Date().toLocaleTimeString()}.`);
       } catch (e) {
         if (e.status === 401) sessionExpired();
+        else if (e.status === 409 && e.data && e.data.save) adoptAdminSave(e.data.save);
         else setCloudStatus("⚠️ Can't reach the server. Your progress is kept on this device and uploads when you're back online.");
       }
+    }
+
+    function adoptAdminSave(saved) {
+      try { loadFrom(JSON.stringify(saved)); } catch (e) { return; }
+      computeEffects();
+      buffUntil = 0;
+      shownUpgradeIds = shownSkinKey = appliedSkin = null;
+      for (const el of achEl.children) el.classList.remove("got");
+      save();
+      broadcast();
+      render();
+      setCloudStatus(`☁️ Updated by an admin at ${new Date().toLocaleTimeString()}.`);
+      toast("🛠️ An admin updated your bakery!", true);
     }
 
     function sessionExpired() {
@@ -2083,6 +2165,7 @@
             b.addEventListener("click", fn);
             actions.appendChild(b);
           };
+          add("🎛️ Manage", () => openPlayer(u.username));
           add("🔑 Set password", () => adminAction(`New password for ${u.username}:`, "admin/set-password",
             (pw) => ({ username: u.username, newPassword: pw }), `Password for ${u.username} changed. Tell them the new one.`));
           if (!isMe) {
@@ -2098,6 +2181,133 @@
         adminUsersEl.textContent = e.status ? e.message : "Can't reach the server.";
       }
     }
+
+    // ---------- Admin: manage one player's bakery ----------
+    const playerEl = document.getElementById("player");
+    const playerStatsEl = document.getElementById("playerStats");
+    const playerBuildingSel = document.getElementById("playerBuilding");
+    let playerName = null;
+
+    for (const b of BUILDINGS) {
+      const opt = document.createElement("option");
+      opt.value = b.id;
+      opt.textContent = `${b.icon} ${b.name}`;
+      playerBuildingSel.appendChild(opt);
+    }
+
+    function timeAgo(ms) {
+      if (!ms) return "never";
+      const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+      return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`;
+    }
+
+    function showPlayerStats(p, savedAt) {
+      playerStatsEl.innerHTML = `
+        <span>Cookies</span><span>${fmt(Math.floor(p.cookies))}</span>
+        <span>Cookies baked (all time)</span><span>${fmt(Math.floor(p.totalBaked))}</span>
+        <span>Cookie clicks</span><span>${fmt(p.totalClicks)}</span>
+        <span>Buildings owned</span><span>${fmt(totalOwned(p))}</span>
+        <span>Upgrades</span><span>${p.upgrades.length} / ${UPGRADES.length}</span>
+        <span>Achievements</span><span>${p.achievements.length} / ${ACHIEVEMENTS.length}</span>
+        <span>Skins</span><span>${p.skins.length} / ${SKINS.length}</span>
+        <span>Last saved</span><span>${timeAgo(savedAt)}</span>`;
+    }
+
+    async function fetchPlayer() {
+      const { save: saved, savedAt } = await api("admin/get-save", { username: playerName });
+      return { p: saved ? parseSave(JSON.stringify(saved)) : freshState(), savedAt };
+    }
+
+    async function openPlayer(username) {
+      playerName = username;
+      document.getElementById("playerTitle").textContent = `🎛️ ${username}`;
+      playerStatsEl.textContent = "Loading…";
+      playerEl.classList.add("open");
+      try {
+        const { p, savedAt } = await fetchPlayer();
+        showPlayerStats(p, savedAt);
+      } catch (e) {
+        playerStatsEl.textContent = e.status ? e.message : "Can't reach the server.";
+      }
+    }
+
+    // Read their latest save, change it, send it back. If they uploaded in
+    // between, read it again and redo the change so none of their progress is lost.
+    async function editPlayer(change, doneText) {
+      try {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const { p, savedAt } = await fetchPlayer();
+          const before = p.adminRev;
+          change(p);
+          p.adminRev = before;
+          p.lastSaved = Date.now();
+          try {
+            await api("admin/put-save", { username: playerName, save: p, baseSavedAt: savedAt });
+          } catch (e) {
+            if (e.status === 409) continue;
+            throw e;
+          }
+          const fresh = await fetchPlayer();
+          showPlayerStats(fresh.p, fresh.savedAt);
+          toast(`🛠️ ${esc(playerName)}: ${esc(doneText)}`);
+          loadAdminUsers();
+          // Editing your own account: pick up the change right away
+          if (auth && playerName.toLowerCase() === auth.username.toLowerCase()) cloudSave();
+          return;
+        }
+        toast("🛠️ They're saving a lot right now. Try again in a moment.");
+      } catch (e) {
+        toast("🛠️ " + esc(e.status ? e.message : "Can't reach the server."));
+      }
+    }
+
+    const addCookiesTo = (p, n) => {
+      p.cookies = Math.min(p.cookies + n, MAX_COOKIES);
+      p.totalBaked = Math.min(p.totalBaked + n, MAX_COOKIES);
+    };
+
+    document.getElementById("playerClose").addEventListener("click", () => playerEl.classList.remove("open"));
+    playerEl.addEventListener("click", (e) => { if (e.target === playerEl) playerEl.classList.remove("open"); });
+
+    document.getElementById("playerAdd").addEventListener("click", (e) => {
+      const amt = Number(e.target.dataset.amt);
+      if (amt) editPlayer(p => addCookiesTo(p, amt), `added ${fmt(amt)} cookies.`);
+    });
+
+    document.getElementById("playerSet").addEventListener("click", () => {
+      const input = document.getElementById("playerSetInput").value.trim();
+      const v = Number(input);
+      if (input === "" || !Number.isFinite(v) || v < 0) return toast("🛠️ Enter a number of 0 or more.");
+      editPlayer(p => {
+        p.cookies = Math.min(v, MAX_COOKIES);
+        p.totalBaked = Math.max(p.totalBaked, p.cookies);
+      }, `cookies set to ${fmt(v)}.`);
+    });
+
+    playerEl.querySelectorAll("[data-pbn]").forEach(btn => btn.addEventListener("click", () => {
+      const b = BUILDINGS.find(x => x.id === playerBuildingSel.value);
+      const n = Number(btn.dataset.pbn);
+      editPlayer(p => { p.buildings[b.id] = owned(p, b.id) + n; }, `gave ${n} ${b.name}${n > 1 ? "s" : ""}.`);
+    }));
+
+    const playerButton = (id, change, doneText, confirmText) =>
+      document.getElementById(id).addEventListener("click", () => {
+        if (confirmText && !confirm(confirmText.replace("{name}", playerName))) return;
+        editPlayer(change, doneText);
+      });
+
+    playerButton("playerAllBuildings", p => { for (const b of BUILDINGS) p.buildings[b.id] = owned(p, b.id) + 10; }, "gave 10 of every building.");
+    playerButton("playerClearBuildings", p => { p.buildings = {}; }, "removed all buildings.", "Remove all of {name}'s buildings?");
+    playerButton("playerAllUpgrades", p => { p.upgrades = UPGRADES.map(u => u.id); }, "unlocked all upgrades.");
+    playerButton("playerClearUpgrades", p => { p.upgrades = []; }, "removed all upgrades.", "Remove all of {name}'s upgrades?");
+    playerButton("playerAllAch", p => { p.achievements = ACHIEVEMENTS.map(a => a.id); }, "unlocked all achievements.");
+    playerButton("playerClearAch", p => { p.achievements = []; }, "cleared achievements.");
+    playerButton("playerAllSkins", p => { p.skins = SKINS.map(k => k.id); }, "unlocked all skins.");
+    playerButton("playerWipe", p => {
+      const fresh = freshState();
+      for (const k of Object.keys(p)) delete p[k];
+      Object.assign(p, fresh);
+    }, "bakery wiped.", "Wipe {name}'s whole bakery? All their cookies, buildings, upgrades, achievements and skins will be gone.");
 
     // ask = prompt text (for a value) or null; confirmText = yes/no question or undefined
     async function adminAction(ask, action, makeBody, doneText, confirmText) {

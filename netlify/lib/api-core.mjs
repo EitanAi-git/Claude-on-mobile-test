@@ -133,7 +133,14 @@ export function createApi({ users, sessions, saves }) {
       const save = body.save;
       if (!save || typeof save !== "object" || Array.isArray(save)) return fail(400, "Missing save.");
       if (JSON.stringify(save).length > MAX_SAVE_BYTES) return fail(413, "Save is too big.");
-      await saves.set(userKey(me.user.username), { save, savedAt: Date.now() });
+      // An admin edited this bakery since the player's game last loaded it:
+      // refuse the upload and hand back the edited save for the game to switch to.
+      const record = await saves.get(userKey(me.user.username));
+      const adminRev = record ? record.adminRev || 0 : 0;
+      if (num(save.adminRev) < adminRev) {
+        return json(409, { error: "An admin changed your bakery.", save: record.save });
+      }
+      await saves.set(userKey(me.user.username), { save, savedAt: Date.now(), adminRev });
       // Keep leaderboard stats on the user record so the board is cheap to build
       me.user.totalBaked = num(save.totalBaked);
       me.user.skin = typeof save.skin === "string" ? save.skin.slice(0, 30) : "classic";
@@ -172,6 +179,32 @@ export function createApi({ users, sessions, saves }) {
         .map((u) => ({ username: u.username, isAdmin: !!u.isAdmin, totalBaked: num(u.totalBaked), createdAt: u.createdAt }))
         .sort((a, b) => a.username.localeCompare(b.username));
       return json(200, { users: rows });
+    },
+
+    // The admin's game edits a copy of the player's save and sends it back.
+    async "admin/get-save"(body) {
+      const target = typeof body.username === "string" ? await users.get(userKey(body.username)) : null;
+      if (!target) return fail(404, "No such user.");
+      const record = await saves.get(userKey(target.username));
+      return json(200, { save: record ? record.save : null, savedAt: record ? record.savedAt : 0 });
+    },
+
+    async "admin/put-save"(body) {
+      const target = typeof body.username === "string" ? await users.get(userKey(body.username)) : null;
+      if (!target) return fail(404, "No such user.");
+      const save = body.save;
+      if (!save || typeof save !== "object" || Array.isArray(save)) return fail(400, "Missing save.");
+      if (JSON.stringify(save).length > MAX_SAVE_BYTES) return fail(413, "Save is too big.");
+      const record = await saves.get(userKey(target.username));
+      // The player uploaded in between: the admin's game re-reads and tries again
+      if ((record ? record.savedAt : 0) !== body.baseSavedAt) return fail(409, "The save changed, try again.");
+      const adminRev = (record ? record.adminRev || 0 : 0) + 1;
+      save.adminRev = adminRev;
+      await saves.set(userKey(target.username), { save, savedAt: Date.now(), adminRev });
+      target.totalBaked = num(save.totalBaked);
+      target.skin = typeof save.skin === "string" ? save.skin.slice(0, 30) : "classic";
+      await users.set(userKey(target.username), target);
+      return json(200, { ok: true, save });
     },
 
     async "admin/set-password"(body) {
