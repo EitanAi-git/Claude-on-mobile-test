@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Button Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    button {
+      font-size: 1.2rem;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+    button:active { background: #1d4ed8; }
+    #message { margin-top: 20px; font-size: 1.1rem; min-height: 1.5em; }
+  </style>
+</head>
+<body>
+  <button id="actionButton">Click me</button>
+  <p id="message"></p>
+
+  <script>
+    let clicks = 0;
+    document.getElementById("actionButton").addEventListener("click", () => {
+      clicks++;
+      document.getElementById("message").textContent =
+        "I did something! (clicked " + clicks + " time" + (clicks === 1 ? "" : "s") + ")";
+    });
+  </script>
+</body>
+</html>
