@@ -52,6 +52,12 @@
       padding: max(16px, env(safe-area-inset-top)) 16px 32px;
     }
 
+    /* Let grid columns shrink below their content so long numbers wrap
+       instead of pushing the page wider than the screen. */
+    .layout > * { min-width: 0; }
+    #count, .b-cost, .b-info, #cps { overflow-wrap: anywhere; }
+    .building > div { min-width: 0; }
+
     @media (min-width: 820px) {
       .layout { grid-template-columns: 1.1fr 1fr; align-items: start; }
       .cookie-area { position: sticky; top: 16px; }
@@ -711,6 +717,8 @@
 
     // ================= State =================
     const SAVE_KEY = "cookieClickerSave.v1";
+    // Hard cap so cookie counts never overflow to Infinity (which turns into NaN when spent).
+    const MAX_COOKIES = 1e300;
 
     function freshState() {
       return {
@@ -776,9 +784,15 @@
       " septillion", " octillion", " nonillion", " decillion"];
 
     function fmt(n, decimals = 0) {
-      if (n < 1000) return n.toFixed(n < 10 && decimals ? decimals : 0).replace(/\.0$/, "");
-      if (n < 1e6) return Math.floor(n).toLocaleString("en-US");
-      const tier = Math.min(Math.floor(Math.log10(n) / 3), SUFFIXES.length - 1);
+      if (!Number.isFinite(n)) return "∞";
+      if (n < 0) n = 0;
+      if (n < 999.5) return n.toFixed(n < 10 && decimals ? decimals : 0).replace(/\.0$/, "");
+      if (n < 999999.5) return Math.round(n).toLocaleString("en-US");
+      let tier = Math.floor(Math.log10(n) / 3);
+      // 999.9999 million would round to "1000 million"; bump it to "1 billion"
+      if (Number((n / Math.pow(1000, tier)).toFixed(3)) >= 1000) tier++;
+      // Past the last named suffix, fall back to scientific notation
+      if (tier >= SUFFIXES.length) return n.toExponential(3).replace("e+", "e");
       return (n / Math.pow(1000, tier)).toFixed(3).replace(/\.?0+$/, "") + SUFFIXES[tier];
     }
 
@@ -794,11 +808,32 @@
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
     }
 
+    // Parse a save and keep only valid values, so a broken or hand-edited
+    // save can't put strings, negatives, NaN or unknown IDs into the game.
     function loadFrom(json) {
-      const loaded = Object.assign(freshState(), JSON.parse(json));
-      const known = new Set(UPGRADES.map(u => u.id));
-      loaded.upgrades = [...new Set(loaded.upgrades.map(id => UPGRADE_RENAMES[id] || id))].filter(id => known.has(id));
-      state = loaded;
+      const raw = JSON.parse(json);
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Not a save");
+
+      const num = (v, fallback = 0) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback);
+      const idList = (list, known, renames = {}) => Array.isArray(list)
+        ? [...new Set(list.map(id => renames[id] || id))].filter(id => known.has(id))
+        : [];
+
+      const s = freshState();
+      s.cookies = Math.min(num(raw.cookies), MAX_COOKIES);
+      s.totalBaked = Math.min(Math.max(num(raw.totalBaked), s.cookies), MAX_COOKIES);
+      s.totalClicks = Math.floor(num(raw.totalClicks));
+      s.goldenClicks = Math.floor(num(raw.goldenClicks));
+      s.startedAt = num(raw.startedAt, s.startedAt);
+      s.lastSaved = num(raw.lastSaved, s.lastSaved);
+      const rawBuildings = raw.buildings && typeof raw.buildings === "object" ? raw.buildings : {};
+      for (const b of BUILDINGS) {
+        const n = Math.floor(num(rawBuildings[b.id]));
+        if (n > 0) s.buildings[b.id] = n;
+      }
+      s.upgrades = idList(raw.upgrades, new Set(UPGRADES.map(u => u.id)), UPGRADE_RENAMES);
+      s.achievements = idList(raw.achievements, new Set(ACHIEVEMENTS.map(a => a.id)));
+      state = s;
     }
 
     function load() {
@@ -880,7 +915,11 @@
       ctx.globalAlpha = 1;
     }
 
+    let floatCount = 0;
+
     function floatNum(text, x, y, color = "white") {
+      if (floatCount >= 40) return; // keep super-fast clicking smooth
+      floatCount++;
       const el = document.createElement("div");
       el.className = "float-num";
       el.textContent = text;
@@ -888,7 +927,7 @@
       el.style.top = y - 30 + "px";
       el.style.color = color;
       document.body.appendChild(el);
-      setTimeout(() => el.remove(), 1000);
+      setTimeout(() => { el.remove(); floatCount--; }, 1000);
     }
 
     function toast(html) {
@@ -992,9 +1031,9 @@
         r.row.style.display = visible ? "" : "none";
         const locked = have === 0 && state.totalBaked < b.base;
         r.row.classList.toggle("locked", locked);
-        r.row.disabled = state.cookies < cost;
+        r.row.disabled = !Number.isFinite(cost) || state.cookies < cost;
         r.cost.textContent = "🍪 " + fmt(cost) + (buyAmount > 1 ? ` (x${buyAmount})` : "");
-        r.owned.textContent = have;
+        r.owned.textContent = fmt(have);
         const each = b.cps * effects.mult[b.id] * effects.globalMult;
         r.info.textContent = locked ? "???" : `${b.desc} Each makes ${fmt(each, 1)}/s.`;
         r.row.title = `${b.name}: ${fmt(buildingCps(b) * effects.globalMult, 1)}/s total`;
@@ -1017,8 +1056,9 @@
 
     // ================= Actions =================
     function earn(n) {
-      state.cookies += n;
-      state.totalBaked += n;
+      if (!(n > 0)) return; // ignore NaN, Infinity-minus-Infinity, negatives
+      state.cookies = Math.min(state.cookies + n, MAX_COOKIES);
+      state.totalBaked = Math.min(state.totalBaked + n, MAX_COOKIES);
     }
 
     const cookieBtn = document.getElementById("cookie");
@@ -1038,7 +1078,7 @@
     function buyBuilding(b, e) {
       const have = owned(state, b.id);
       const cost = costFor(b, have, buyAmount);
-      if (state.cookies < cost) return;
+      if (!Number.isFinite(cost) || state.cookies < cost) return;
       state.cookies -= cost;
       state.buildings[b.id] = have + buyAmount;
       beep(600, 0.1, "triangle", 0.1);
@@ -1073,6 +1113,8 @@
       computeEffects();
       buffUntil = 0;
       setGameSpeed(1);
+      golden.style.display = "none";
+      nextGolden = Date.now() + randomGoldenDelay();
       shownUpgradeIds = null;
       for (const el of achEl.children) el.classList.remove("got");
       save();
@@ -1151,6 +1193,7 @@
     adminEl.addEventListener("click", (e) => { if (e.target === adminEl) toggleAdmin(false); });
     addEventListener("keydown", (e) => {
       if (e.target.matches("input, select, textarea")) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return; // don't hijack Ctrl+A etc.
       if (e.key === "a" || e.key === "A") toggleAdmin();
       if (e.key === "Escape") toggleAdmin(false);
     });
@@ -1163,10 +1206,11 @@
     });
 
     document.getElementById("adminSet").addEventListener("click", () => {
-      const v = Number(document.getElementById("adminSetInput").value);
-      if (!Number.isFinite(v) || v < 0) return toast("🛠️ Enter a number of 0 or more.");
-      state.cookies = v;
-      state.totalBaked = Math.max(state.totalBaked, v);
+      const input = document.getElementById("adminSetInput").value.trim();
+      const v = Number(input);
+      if (input === "" || !Number.isFinite(v) || v < 0) return toast("🛠️ Enter a number of 0 or more.");
+      state.cookies = Math.min(v, MAX_COOKIES);
+      state.totalBaked = Math.max(state.totalBaked, state.cookies);
       adminDone(`Cookies set to ${fmt(v)}.`);
     });
 
@@ -1295,11 +1339,19 @@
     }
 
     function frame(now) {
-      const dt = Math.min((now - lastTick) / 1000, 1) * gameSpeed;
+      const elapsed = (now - lastTick) / 1000;
       lastTick = now;
 
       cpsNow = currentCps();
-      earn(cpsNow * dt);
+      if (elapsed > 5) {
+        // Browsers pause animation frames in background tabs and when the
+        // phone is locked, so catch up on the time we missed.
+        const gain = baseCps() * elapsed * gameSpeed;
+        earn(gain);
+        if (gain >= 1) toast(`👋 Welcome back! Your bakery made <b>${fmt(gain)}</b> cookies while you were away.`);
+      } else {
+        earn(cpsNow * elapsed * gameSpeed);
+      }
 
       if (Date.now() > nextGolden) {
         spawnGolden();
