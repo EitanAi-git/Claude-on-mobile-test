@@ -230,8 +230,8 @@
       text-shadow: 0 1px 2px #000;
     }
 
-    /* ---------- Admin panel ---------- */
-    #admin {
+    /* ---------- Modals (admin panel, account) ---------- */
+    .modal {
       position: fixed;
       z-index: 9;
       inset: 0;
@@ -241,9 +241,9 @@
       background: rgba(0, 0, 0, 0.55);
     }
 
-    #admin.open { display: flex; }
+    .modal.open { display: flex; }
 
-    @media (min-width: 820px) { #admin { align-items: center; } }
+    @media (min-width: 820px) { .modal { align-items: center; } }
 
     .admin-box {
       width: 100%;
@@ -306,6 +306,87 @@
     .admin-row select option { background: #24160d; }
 
     .admin-note { font-size: 0.75rem; color: var(--muted); margin: 0; }
+
+    /* ---------- Account window ---------- */
+    .account-box { border-color: var(--gold); }
+    .account-box h3 { color: var(--gold); }
+    .account-box .admin-grid button, .account-box .admin-row button {
+      background: rgba(255, 204, 77, 0.12);
+      border-color: rgba(255, 204, 77, 0.45);
+    }
+
+    .board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .board li, .user-row {
+      display: grid;
+      grid-template-columns: 28px 28px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(255, 240, 220, 0.05);
+      font-size: 0.9rem;
+    }
+    .board li.me { background: rgba(255, 204, 77, 0.18); font-weight: 800; }
+    .board .rank { color: var(--muted); font-weight: 800; text-align: center; }
+    .board svg { width: 26px; height: 26px; display: block; }
+    .board .score, .user-row .score { font-variant-numeric: tabular-nums; color: var(--gold); font-weight: 700; }
+    .board .name, .user-row .name { min-width: 0; overflow-wrap: anywhere; }
+
+    .user-list { display: flex; flex-direction: column; gap: 6px; }
+    .user-row { grid-template-columns: 1fr auto; }
+    .user-row .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+    .badge { font-size: 0.7rem; background: var(--gold); color: #3b2314; border-radius: 6px; padding: 1px 6px; margin-left: 4px; font-weight: 800; }
+
+    /* ---------- Login screen ---------- */
+    #login {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: radial-gradient(ellipse at top, var(--bg2), var(--bg1) 75%);
+      overflow-y: auto;
+    }
+    #login.open { display: flex; }
+
+    .login-box {
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: center;
+    }
+    .login-box h1 { margin: 0; font-size: 1.8rem; }
+    .login-cookie { width: 96px; height: 96px; margin: 0 auto; }
+    .login-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .login-tabs button, .login-go, .login-guest {
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      color: var(--text);
+    }
+    .login-tabs button.active { background: var(--gold); color: #3b2314; border-color: var(--gold); font-weight: 800; }
+    .login-box label { display: flex; flex-direction: column; gap: 4px; text-align: left; font-size: 0.85rem; color: var(--muted); }
+    .login-box input[type="text"], .login-box input[type="password"] {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 1rem;
+    }
+    .login-box .login-check { flex-direction: row; align-items: center; gap: 8px; }
+    .login-go { background: linear-gradient(90deg, #ffcc4d, #ff8a3d); color: #3b2314; font-weight: 900; border: none; font-size: 1.05rem; }
+    .login-go:disabled { opacity: 0.6; }
+    .login-guest { background: none; color: var(--muted); font-size: 0.85rem; }
+    #loginError { color: #ff9b9b; font-size: 0.9rem; min-height: 1.2em; }
+    .login-note { margin: 0; font-size: 0.8rem; color: var(--muted); }
 
     .building {
       display: grid;
@@ -526,7 +607,8 @@
       <div class="row-btns">
         <button class="small-btn" id="soundToggle">🔊 Sound</button>
         <button class="small-btn" id="resetBtn">🗑️ Reset</button>
-        <button class="small-btn" id="adminBtn">🛠️ Admin</button>
+        <button class="small-btn" id="adminBtn" style="display: none">🛠️ Admin</button>
+        <button class="small-btn" id="accountBtn">👤 Account</button>
       </div>
     </section>
 
@@ -574,7 +656,58 @@
 
   <div id="toasts"></div>
 
-  <div id="admin" role="dialog" aria-modal="true" aria-label="Admin panel">
+  <div id="login" role="dialog" aria-modal="true" aria-label="Log in">
+    <form class="login-box" id="loginForm">
+      <div class="login-cookie" id="loginCookie"></div>
+      <h1>Cookie Clicker</h1>
+      <div class="login-tabs" id="loginTabs">
+        <button type="button" data-mode="login" class="active">Log in</button>
+        <button type="button" data-mode="register">Create account</button>
+      </div>
+      <label>Username
+        <input type="text" id="loginUser" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="20" required>
+      </label>
+      <label>Password
+        <input type="password" id="loginPass" autocomplete="current-password" maxlength="100" required>
+      </label>
+      <label class="login-check" id="bringWrap" style="display: none">
+        <input type="checkbox" id="bringProgress" checked> Start with the progress already on this device
+      </label>
+      <div id="loginError" role="alert"></div>
+      <button type="submit" class="login-go" id="loginSubmit">Log in</button>
+      <p class="login-note">You'll stay logged in on this device until you log out. Forgot your password? Ask the admin to set a new one.</p>
+      <button type="button" class="login-guest" id="guestBtn">Play as guest (saves on this device only)</button>
+    </form>
+  </div>
+
+  <div id="account" class="modal" role="dialog" aria-modal="true" aria-label="Account">
+    <div class="admin-box account-box">
+      <h3><span id="accountTitle">👤 Account</span><button class="small-btn" id="accountClose">✕ Close</button></h3>
+      <p class="admin-note" id="cloudStatus"></p>
+
+      <h4>Leaderboard</h4>
+      <ol class="board" id="leaderboard"></ol>
+
+      <div id="accountMember">
+        <h4>Change password</h4>
+        <div class="admin-row"><input type="password" id="oldPass" placeholder="Current password" autocomplete="current-password"></div>
+        <div class="admin-row" style="margin-top: 6px">
+          <input type="password" id="newPass" placeholder="New password" autocomplete="new-password">
+          <button id="changePass">Change</button>
+        </div>
+        <h4>Log out</h4>
+        <div class="admin-grid"><button id="logoutBtn">Log out of this device</button></div>
+      </div>
+
+      <div id="accountGuest">
+        <h4>Guest</h4>
+        <p class="admin-note">You're playing as a guest, so your progress is only saved on this device. Make an account to play on any device and join the leaderboard.</p>
+        <div class="admin-grid" style="margin-top: 8px"><button id="toLoginBtn">Log in or create account</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin" class="modal" role="dialog" aria-modal="true" aria-label="Admin panel">
     <div class="admin-box">
       <h3><span>🛠️ Admin Panel</span><button class="small-btn" id="adminClose">✕ Close</button></h3>
       <p class="admin-note">For testing. Press <b>A</b> on a keyboard to toggle.</p>
@@ -635,6 +768,10 @@
         <button data-skip="3600">Skip 1 hour</button>
         <button data-skip="86400">Skip 1 day</button>
       </div>
+
+      <h4>Accounts</h4>
+      <p class="admin-note">Set a new password for a friend who forgot theirs. They'll be logged out and can log in with the new one.</p>
+      <div class="user-list" id="adminUsers" style="margin-top: 6px"></div>
 
       <h4>Save</h4>
       <div class="admin-grid">
@@ -754,84 +891,164 @@
     ];
 
     // ================= Skins =================
-    // Each skin is drawn from these settings by skinSvg() below.
+    // Each skin is drawn from these settings by skinSvg() below; "art" adds
+    // custom drawing on top of the cookie for the fancier skins.
     const SKINS = [
       { id: "classic", name: "Classic", req: "Unlocked from the start", test: () => true,
         glow: "255, 204, 77", dough: ["#f2c27b", "#d99a4e", "#a8682b"], rim: "#8a5220", chips: "#4a2a12" },
       { id: "choc", name: "Double Choc", req: "Bake 1,000 cookies", test: s => s.totalBaked >= 1000,
         glow: "190, 120, 70", dough: ["#9b6a48", "#6b4127", "#43271a"], rim: "#2a170b", chips: "#f5efe0" },
+      { id: "strawberry", name: "Strawberry", req: "Bake 10,000 cookies", test: s => s.totalBaked >= 1e4,
+        glow: "255, 120, 160", dough: ["#ffd6e0", "#f7a1b8", "#d9708b"], rim: "#b84a63", art: () => chunks(["#d81e3c", "#fff4f6"]) },
       { id: "mint", name: "Mint Chip", req: "Own 10 grandmas", test: s => owned(s, "grandma") >= 10,
         glow: "110, 231, 168", dough: ["#d5f7e3", "#9be0bb", "#5fb58b"], rim: "#3f8a66", chips: "#3b2314" },
-      { id: "strawberry", name: "Strawberry", req: "Bake 100,000 cookies", test: s => s.totalBaked >= 1e5,
-        glow: "255, 120, 170", dough: ["#f2c27b", "#d99a4e", "#a8682b"], rim: "#8a5220", chips: "#4a2a12", icing: "#ff8fb8", sprinkles: true },
+      { id: "oatmeal", name: "Oatmeal Raisin", req: "Own 25 cursors", test: s => owned(s, "cursor") >= 25,
+        glow: "220, 180, 120", dough: ["#ecd3a4", "#cfa86c", "#a07d48"], rim: "#7d5f33",
+        art: () => spiral(34, (a, t) => {
+          const r = t * 80, x = 100 + r * Math.cos(a), y = 100 + r * Math.sin(a);
+          return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="5" ry="2.2" fill="#f6e7c8" transform="rotate(${(a * 57) % 180} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
+        }) + chips("#4b2340", 0.8) },
+      { id: "frosted", name: "Frosted", req: "Buy 10 upgrades", test: s => s.upgrades.length >= 10,
+        glow: "190, 120, 70", dough: ["#f2c27b", "#d99a4e", "#a8682b"], rim: "#8a5220",
+        art: () => `<path d="${wavyCircle(100, 100, 68, 5, 10)}" fill="#5a3220"/>` +
+          `<path d="${wavyCircle(100, 100, 68, 5, 10)}" fill="none" stroke="#7a4a30" stroke-width="3"/>` + sprinkles(100, 100, 8, 56, 26) },
       { id: "donut", name: "Donut", req: "Click the cookie 1,000 times", test: s => s.totalClicks >= 1000,
-        glow: "255, 143, 184", dough: ["#f6d39a", "#e0a85c", "#b97a35"], rim: "#9a6328", donut: true, icing: "#ff8fb8", sprinkles: true },
+        glow: "255, 143, 184", dough: ["#f6d39a", "#e0a85c", "#b97a35"], rim: "#9a6328", donut: true,
+        art: () => `<path fill-rule="evenodd" d="${wavyCircle(100, 100, 78, 3, 12)} ${circlePath(100, 100, 42)}" fill="#ff8fb8"/>` + sprinkles(100, 100, 48, 72, 26) },
+      { id: "watermelon", name: "Watermelon", req: "Bake 1 million cookies", test: s => s.totalBaked >= 1e6,
+        glow: "255, 90, 110", dough: ["#ff8a98", "#f0485e", "#c92a42"], rim: "#2e8b3a",
+        art: () => `<circle cx="100" cy="100" r="88" fill="none" stroke="#2e8b3a" stroke-width="8"/>` +
+          `<circle cx="100" cy="100" r="82" fill="none" stroke="#e8ffe0" stroke-width="5"/>` +
+          spiral(14, (a, t) => {
+            const r = 20 + t * 45, x = 100 + r * Math.cos(a), y = 100 + r * Math.sin(a);
+            return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="5.5" fill="#1d1d1d" transform="rotate(${(a * 180 / Math.PI + 90).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
+          }) },
       { id: "golden", name: "Golden", req: "Click 10 golden cookies", test: s => s.goldenClicks >= 10,
         glow: "255, 215, 0", dough: ["#fff6c4", "#ffd34d", "#d99a10"], rim: "#b07a0a", chips: "#a8740a" },
+      { id: "moon", name: "Moon", req: "Own 10 mines", test: s => owned(s, "mine") >= 10,
+        glow: "210, 210, 230", dough: ["#f0f0f4", "#bdbdc6", "#80808b"], rim: "#60606b",
+        art: () => [[70, 65, 16], [130, 112, 22], [78, 142, 11], [142, 58, 9], [108, 72, 7], [52, 108, 8]].map(([x, y, r]) =>
+          `<circle cx="${x}" cy="${y}" r="${r}" fill="#9d9da8" stroke="#8a8a95" stroke-width="2"/>` +
+          `<circle cx="${x + r * 0.2}" cy="${y + r * 0.2}" r="${r * 0.7}" fill="#b1b1bb"/>`).join("") },
+      { id: "pizza", name: "Pizza", req: "Own 10 factories", test: s => owned(s, "factory") >= 10,
+        glow: "255, 170, 60", dough: ["#f7c873", "#e0a24a", "#b97a2c"], rim: "#9a6328",
+        art: () => `<circle cx="100" cy="100" r="78" fill="#cf3b26"/><path d="${wavyCircle(100, 100, 71, 4, 9)}" fill="#ffd45c"/>` +
+          [[70, 70], [130, 75], [100, 110], [65, 132], [135, 135], [100, 48]].map(([x, y]) =>
+            `<circle cx="${x}" cy="${y}" r="12" fill="#b3302a"/><circle cx="${x - 4}" cy="${y - 3}" r="2" fill="#8c1f1a"/><circle cx="${x + 4}" cy="${y + 3}" r="1.6" fill="#8c1f1a"/>`).join("") },
+      { id: "lava", name: "Lava", req: "Reach 10,000 cookies per second", test: () => cpsNow >= 1e4,
+        glow: "255, 106, 0", dough: ["#5a2414", "#2e0f07", "#140603"], rim: "#ff6a00",
+        art: () => ["M40 70L70 85L95 70L120 90L160 80", "M70 85L75 120L60 150", "M120 90L130 125L115 160", "M95 70L100 38", "M130 125L158 132"]
+          .map(d => `<path d="${d}" fill="none" stroke="#ff7a1a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>` +
+            `<path d="${d}" fill="none" stroke="#ffd27a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`).join("") },
       { id: "planet", name: "Planet", req: "Own a Rocket", test: s => owned(s, "rocket") >= 1,
-        glow: "90, 170, 255", dough: ["#9be7ff", "#3b8fd9", "#1d4f91"], rim: "#163a6b", continents: "#5fbf6a", ring: "#ffd27a" },
+        glow: "90, 170, 255", dough: ["#9be7ff", "#3b8fd9", "#1d4f91"], rim: "#163a6b",
+        art: () => `<g fill="#5fbf6a" opacity="0.9"><ellipse cx="70" cy="70" rx="24" ry="15" transform="rotate(20 70 70)"/>` +
+          `<ellipse cx="130" cy="125" rx="28" ry="16" transform="rotate(-20 130 125)"/><ellipse cx="78" cy="142" rx="14" ry="10"/>` +
+          `<ellipse cx="142" cy="62" rx="12" ry="8"/></g>` +
+          `<ellipse cx="100" cy="100" rx="97" ry="24" fill="none" stroke="#ffd27a" stroke-width="6" opacity="0.85" transform="rotate(-20 100 100)"/>` },
+      { id: "pixel", name: "Pixel", req: "Click the cookie 5,000 times", test: s => s.totalClicks >= 5000,
+        glow: "255, 204, 77", pixel: true },
+      { id: "frozen", name: "Frozen", req: "Own a Fractal Engine", test: s => owned(s, "fractal") >= 1,
+        glow: "160, 220, 255", dough: ["#f4fcff", "#c6e9fb", "#86c9ee"], rim: "#4a9ccc",
+        art: () => [[70, 65, 14], [135, 100, 18], [85, 140, 11], [140, 55, 8], [60, 115, 7]].map(([x, y, r]) =>
+          [0, 60, 120].map(deg => {
+            const a = deg * Math.PI / 180, dx = (r * Math.cos(a)).toFixed(1), dy = (r * Math.sin(a)).toFixed(1);
+            return `<line x1="${x - dx}" y1="${y - dy}" x2="${x + +dx}" y2="${y + +dy}" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`;
+          }).join("")).join("") },
       { id: "galaxy", name: "Galaxy", req: "Bake 1 trillion cookies", test: s => s.totalBaked >= 1e12,
-        glow: "170, 120, 255", dough: ["#6b4bd6", "#3a1f7a", "#120a2e"], rim: "#a78bfa", stars: true },
+        glow: "170, 120, 255", dough: ["#6b4bd6", "#3a1f7a", "#120a2e"], rim: "#a78bfa", art: () => stars(40) },
+      { id: "blackhole", name: "Black Hole", req: "Own a Singularity", test: s => owned(s, "singularity") >= 1,
+        glow: "255, 154, 60", dough: ["#2a1250", "#0a0418", "#000000"], rim: "#ff9a3c",
+        art: () => stars(18) +
+          `<ellipse cx="100" cy="100" rx="88" ry="22" fill="none" stroke="#ffb347" stroke-width="7" opacity="0.9" transform="rotate(-15 100 100)"/>` +
+          `<circle cx="100" cy="100" r="34" fill="#000" stroke="#ffd9a0" stroke-width="2"/>` },
       { id: "rainbow", name: "Rainbow", req: "Unlock every achievement", test: s => s.achievements.length >= ACHIEVEMENTS.length,
         glow: "255, 138, 61", rainbow: true, rim: "#ffffff", chips: "#ffffff" },
     ];
 
+    // ---------- Skin drawing helpers ----------
     const CHIP_SPOTS = [[65, 60, 11, 9, 20], [120, 50, 9, 7, 0], [145, 95, 12, 9, -30], [95, 100, 10, 8, 45],
       [55, 115, 9, 7, 0], [110, 145, 12, 8, 10], [70, 155, 7, 6, 0], [150, 140, 8, 6, 0], [85, 35, 6, 5, 0]];
     const SPRINKLE_COLORS = ["#ffffff", "#ffe66d", "#5ab0ff", "#6ee7a8", "#b57bff"];
+    const f1 = (n) => n.toFixed(1);
+
+    // Golden-angle spiral: evenly spread points, t goes from 0 (centre) to 1 (edge)
+    function spiral(n, draw) {
+      let out = "";
+      for (let i = 1; i <= n; i++) out += draw(i * 2.39996, Math.sqrt(i / n), i);
+      return out;
+    }
+    function circlePath(cx, cy, r) {
+      return `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
+    }
+    function wavyCircle(cx, cy, r, amp, waves) {
+      let d = "";
+      for (let deg = 0; deg < 360; deg += 4) {
+        const a = deg * Math.PI / 180, rr = r + amp * Math.sin(a * waves);
+        d += (deg ? "L" : "M") + f1(cx + rr * Math.cos(a)) + " " + f1(cy + rr * Math.sin(a));
+      }
+      return d + "Z";
+    }
+    function chips(color, scale = 1) {
+      return CHIP_SPOTS.map(([x, y, rx, ry, rot]) =>
+        `<ellipse cx="${x}" cy="${y}" rx="${rx * scale}" ry="${ry * scale}" fill="${color}" transform="rotate(${rot} ${x} ${y})"/>`).join("");
+    }
+    function chunks(colors) {
+      return CHIP_SPOTS.map(([x, y, rx, ry, rot], i) =>
+        `<rect x="${x - rx}" y="${y - ry}" width="${2 * rx}" height="${2 * ry}" rx="3" fill="${colors[i % colors.length]}" transform="rotate(${rot + 15} ${x} ${y})"/>`).join("");
+    }
+    function sprinkles(cx, cy, rMin, rMax, n) {
+      return spiral(n, (a, t, i) => {
+        const r = rMin + (rMax - rMin) * t, x = f1(cx + r * Math.cos(a)), y = f1(cy + r * Math.sin(a));
+        return `<rect x="${f1(x - 5)}" y="${f1(y - 1.5)}" width="10" height="3" rx="1.5" fill="${SPRINKLE_COLORS[i % 5]}" transform="rotate(${(i * 47) % 180} ${x} ${y})"/>`;
+      });
+    }
+    function stars(n) {
+      return spiral(n, (a, t, i) =>
+        `<circle cx="${f1(100 + t * 82 * Math.cos(a))}" cy="${f1(100 + t * 82 * Math.sin(a))}" r="${i % 7 ? 1.6 : 3}" fill="#fff" opacity="${i % 3 ? 0.9 : 0.55}"/>`);
+    }
+    // An 8-bit cookie made of squares
+    function pixelCookie() {
+      let out = "";
+      for (let i = 0; i < 12; i++) {
+        for (let j = 0; j < 12; j++) {
+          const x = 4 + i * 16, y = 4 + j * 16, d = Math.hypot(x + 8 - 100, y + 8 - 100);
+          if (d > 94) continue;
+          const color = d > 80 ? "#8a5220" : (i * 7 + j * 13) % 9 === 0 ? "#4a2a12" : (i < 6 && j < 6 && d < 60) ? "#f2c27b" : "#d99a4e";
+          out += `<rect x="${x}" y="${y}" width="16" height="16" fill="${color}"/>`;
+        }
+      }
+      return out;
+    }
 
     // uid keeps gradient IDs unique when several skins are on the page at once.
     function skinSvg(k, uid) {
+      if (k.pixel) return `<svg viewBox="0 0 200 200" aria-hidden="true" shape-rendering="crispEdges">${pixelCookie()}</svg>`;
       const g = `dough-${uid}`;
       const gradient = k.rainbow
         ? `<linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1">${["#ff5e5e", "#ffb347", "#ffe66d", "#6ee7a8", "#5ab0ff", "#b57bff"]
             .map((c, i) => `<stop offset="${i / 5}" stop-color="${c}"/>`).join("")}</linearGradient>`
         : `<radialGradient id="${g}" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="${k.dough[0]}"/>` +
           `<stop offset="60%" stop-color="${k.dough[1]}"/><stop offset="100%" stop-color="${k.dough[2]}"/></radialGradient>`;
-      const ring = (r) => `M${100 - r} 100a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
 
       let out = `<svg viewBox="0 0 200 200" aria-hidden="true"><defs>${gradient}</defs>`;
       out += k.donut
-        ? `<path fill-rule="evenodd" d="${ring(92)} ${ring(30)}" fill="url(#${g})" stroke="${k.rim}" stroke-width="4"/>`
+        ? `<path fill-rule="evenodd" d="${circlePath(100, 100, 92)} ${circlePath(100, 100, 30)}" fill="url(#${g})" stroke="${k.rim}" stroke-width="4"/>`
         : `<circle cx="100" cy="100" r="92" fill="url(#${g})" stroke="${k.rim}" stroke-width="4"/>`;
-
-      if (k.chips) {
-        out += `<g fill="${k.chips}">` + CHIP_SPOTS.map(([x, y, rx, ry, rot]) =>
-          `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${x} ${y})"/>`).join("") + `</g>`;
-      }
-      if (k.continents) {
-        out += `<g fill="${k.continents}" opacity="0.9"><ellipse cx="70" cy="70" rx="24" ry="15" transform="rotate(20 70 70)"/>` +
-          `<ellipse cx="130" cy="125" rx="28" ry="16" transform="rotate(-20 130 125)"/><ellipse cx="78" cy="142" rx="14" ry="10"/>` +
-          `<ellipse cx="142" cy="62" rx="12" ry="8"/></g>`;
-      }
-      if (k.stars) {
-        // Golden-angle spiral of little stars
-        for (let i = 1; i <= 40; i++) {
-          const a = i * 2.39996, r = Math.sqrt(i / 40) * 82;
-          out += `<circle cx="${(100 + r * Math.cos(a)).toFixed(1)}" cy="${(100 + r * Math.sin(a)).toFixed(1)}" r="${i % 7 ? 1.6 : 3}" fill="#fff" opacity="${i % 3 ? 0.9 : 0.55}"/>`;
-        }
-      }
-      if (k.icing) {
-        out += k.donut
-          ? `<path fill-rule="evenodd" d="${ring(78)} ${ring(42)}" fill="${k.icing}"/>`
-          : `<path d="M40 85Q45 40 100 35Q160 38 162 90Q165 130 130 140Q120 120 105 138Q90 150 80 132Q60 140 48 120Q35 105 40 85Z" fill="${k.icing}"/>`;
-      }
-      if (k.sprinkles) {
-        for (let i = 0; i < 26; i++) {
-          const a = i * 2.39996, r = k.donut ? 48 + (i % 5) * 6 : Math.sqrt(i / 26) * 52;
-          const x = 100 + r * Math.cos(a), y = (k.donut ? 100 : 88) + r * Math.sin(a);
-          out += `<rect x="${(x - 5).toFixed(1)}" y="${(y - 1.5).toFixed(1)}" width="10" height="3" rx="1.5" fill="${SPRINKLE_COLORS[i % 5]}" transform="rotate(${(i * 47) % 180} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
-        }
-      }
-      if (k.ring) {
-        out += `<ellipse cx="100" cy="100" rx="97" ry="24" fill="none" stroke="${k.ring}" stroke-width="6" opacity="0.85" transform="rotate(-20 100 100)"/>`;
-      }
+      if (k.chips) out += chips(k.chips);
+      if (k.art) out += k.art();
       out += `<circle cx="60" cy="45" r="14" fill="#fff" opacity="0.25"/></svg>`;
       return out;
     }
 
     // ================= State =================
-    const SAVE_KEY = "cookieClickerSave.v1";
+    const GUEST_SAVE_KEY = "cookieClickerSave.v1";
+    let auth = null; // { token, username, isAdmin } when logged in; null for guests
+
+    // Each account gets its own copy on this device; guests use the original key.
+    function saveKey() {
+      return auth ? `${GUEST_SAVE_KEY}:${auth.username.toLowerCase()}` : GUEST_SAVE_KEY;
+    }
     // Hard cap so cookie counts never overflow to Infinity (which turns into NaN when spent).
     const MAX_COOKIES = 1e300;
 
@@ -923,7 +1140,7 @@
     function save() {
       if (!isLeader) return; // other tabs just mirror the leader
       state.lastSaved = Date.now();
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
+      try { localStorage.setItem(saveKey(), JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
     }
 
     // Parse a save and keep only valid values, so a broken or hand-edited
@@ -956,10 +1173,16 @@
       state = s;
     }
 
-    function load() {
+    // Load the newest copy: the account's cloud save, or this device's copy
+    // if it's newer (e.g. you kept playing while offline).
+    function load(cloudSave = null) {
+      let local = null;
+      try { local = JSON.parse(localStorage.getItem(saveKey())); } catch (e) { /* missing or broken */ }
+      const savedAt = (x) => (x && typeof x.lastSaved === "number" ? x.lastSaved : 0);
+      const pick = local && savedAt(local) >= savedAt(cloudSave) ? local : cloudSave;
       try {
-        const raw = localStorage.getItem(SAVE_KEY);
-        if (raw) loadFrom(raw);
+        if (pick) loadFrom(JSON.stringify(pick));
+        else state = freshState();
       } catch (e) { state = freshState(); }
     }
 
@@ -1290,6 +1513,7 @@
       shownUpgradeIds = null;
       for (const el of achEl.children) el.classList.remove("got");
       save();
+      cloudSave();
       toast("🗑️ Bakery reset. Time to start baking again!");
     });
 
@@ -1350,7 +1574,9 @@
     }
 
     function toggleAdmin(open = !adminEl.classList.contains("open")) {
+      if (open && !(auth && auth.isAdmin)) return;
       adminEl.classList.toggle("open", open);
+      if (open) loadAdminUsers();
     }
 
     function adminDone(msg) {
@@ -1366,8 +1592,8 @@
     addEventListener("keydown", (e) => {
       if (e.target.matches("input, select, textarea")) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return; // don't hijack Ctrl+A etc.
-      if (e.key === "a" || e.key === "A") toggleAdmin();
-      if (e.key === "Escape") toggleAdmin(false);
+      if ((e.key === "a" || e.key === "A") && auth && auth.isAdmin) toggleAdmin();
+      if (e.key === "Escape") { toggleAdmin(false); toggleAccount(false); }
     });
 
     document.getElementById("adminAdd").addEventListener("click", (e) => {
@@ -1508,7 +1734,6 @@
     let leaderSince = 0;   // when this tab became leader (newest leader wins)
     let lastLeaderMsg = 0; // when this tab last heard from a leader
     let channel = null;
-    try { channel = new BroadcastChannel("cookie-clicker-sync"); } catch (e) { /* unsupported: single-tab mode */ }
 
     function post(msg) {
       try { channel && channel.postMessage({ ...msg, from: tabId }); } catch (e) { /* ignore */ }
@@ -1521,7 +1746,7 @@
     }
 
     function becomeLeader() {
-      if (isLeader) return;
+      if (isLeader || !gameStarted) return;
       isLeader = true;
       leaderSince = Date.now();
       lastTick = performance.now(); // the old leader already earned for the time until now
@@ -1543,7 +1768,14 @@
       return msg.since > leaderSince || (msg.since === leaderSince && msg.from > tabId);
     }
 
-    if (channel) {
+    // One channel per account, so tabs only sync with tabs logged into the same account
+    function openChannel() {
+      try {
+        channel = new BroadcastChannel("cookie-clicker-sync:" + (auth ? auth.username.toLowerCase() : "guest"));
+      } catch (e) {
+        channel = null; // unsupported: single-tab mode
+        return;
+      }
       channel.onmessage = ({ data: msg }) => {
         if (!msg || msg.from === tabId) return;
         if (msg.type === "hello") {
@@ -1622,6 +1854,7 @@
         checkAchievements();
         checkSkins();
         if (Date.now() - lastSave > 5000) { save(); lastSave = Date.now(); }
+        if (auth && Date.now() - lastCloudSave > 30000) cloudSave();
         broadcast();
       } else if (lastLeaderMsg && Date.now() - lastLeaderMsg > 3000 && !document.hidden) {
         becomeLeader(); // the leader tab was closed or frozen
@@ -1635,15 +1868,255 @@
 
     // Save when leaving; switching back to this tab makes it the leader.
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) save();
-      else becomeLeader();
+      if (document.hidden) { save(); cloudSave({ keepalive: true }); }
+      else if (gameStarted) becomeLeader();
     });
-    addEventListener("pagehide", save);
+    addEventListener("pagehide", () => { save(); cloudSave({ keepalive: true }); });
+
+    // ================= Accounts =================
+    // Accounts live on the server (Netlify Functions + Blobs, see /netlify).
+    // The login token is remembered on this device until you log out.
+    const AUTH_KEY = "cookieClickerAuth";
+    const loginEl = document.getElementById("login");
+    const loginForm = document.getElementById("loginForm");
+    const loginUser = document.getElementById("loginUser");
+    const loginPass = document.getElementById("loginPass");
+    const loginError = document.getElementById("loginError");
+    const loginSubmit = document.getElementById("loginSubmit");
+    const bringWrap = document.getElementById("bringWrap");
+    const accountEl = document.getElementById("account");
+    const accountBtn = document.getElementById("accountBtn");
+    const adminBtn = document.getElementById("adminBtn");
+    const cloudStatusEl = document.getElementById("cloudStatus");
+    const leaderboardEl = document.getElementById("leaderboard");
+    const adminUsersEl = document.getElementById("adminUsers");
+    let gameStarted = false;
+    let loginMode = "login";
+    let lastCloudSave = Date.now();
+
+    const esc = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+    function readAuth() {
+      try {
+        const a = JSON.parse(localStorage.getItem(AUTH_KEY));
+        return a && typeof a.token === "string" && typeof a.username === "string" ? a : null;
+      } catch (e) { return null; }
+    }
+
+    function writeAuth(a) {
+      try { a ? localStorage.setItem(AUTH_KEY, JSON.stringify(a)) : localStorage.removeItem(AUTH_KEY); } catch (e) { /* storage blocked */ }
+    }
+
+    async function api(action, body = {}, { keepalive = false } = {}) {
+      const res = await fetch("/api/" + action, {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(auth ? { authorization: "Bearer " + auth.token } : {}) },
+        body: JSON.stringify(body),
+        keepalive,
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) { /* not JSON */ }
+      if (!res.ok) {
+        const err = new Error(data.error || "Something went wrong.");
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    function setCloudStatus(text) { cloudStatusEl.textContent = text; }
+
+    async function cloudSave({ keepalive = false } = {}) {
+      if (!auth || !isLeader || !gameStarted) return;
+      lastCloudSave = Date.now();
+      state.lastSaved = Date.now();
+      try {
+        await api("save", { save: state }, { keepalive });
+        setCloudStatus(`☁️ Progress saved to your account at ${new Date().toLocaleTimeString()}.`);
+      } catch (e) {
+        if (e.status === 401) sessionExpired();
+        else setCloudStatus("⚠️ Can't reach the server. Your progress is kept on this device and uploads when you're back online.");
+      }
+    }
+
+    function sessionExpired() {
+      writeAuth(null);
+      auth = null;
+      showLogin("You were logged out (maybe your password was changed). Please log in again.");
+    }
+
+    // ---------- Login screen ----------
+    function guestHasProgress() {
+      if (gameStarted && !auth && state.totalBaked > 0) return true; // playing as guest right now
+      try { return (JSON.parse(localStorage.getItem(GUEST_SAVE_KEY)) || {}).totalBaked > 0; } catch (e) { return false; }
+    }
+
+    function setLoginMode(mode) {
+      loginMode = mode;
+      for (const b of document.getElementById("loginTabs").children) b.classList.toggle("active", b.dataset.mode === mode);
+      loginSubmit.textContent = mode === "login" ? "Log in" : "Create account";
+      loginPass.autocomplete = mode === "login" ? "current-password" : "new-password";
+      bringWrap.style.display = mode === "register" && !auth && guestHasProgress() ? "flex" : "none";
+      loginError.textContent = "";
+    }
+
+    function showLogin(message = "") {
+      document.getElementById("loginCookie").innerHTML = skinSvg(SKINS[0], "login");
+      setLoginMode(loginMode);
+      loginError.textContent = message;
+      loginEl.classList.add("open");
+    }
+
+    document.getElementById("loginTabs").addEventListener("click", (e) => {
+      if (e.target.dataset.mode) setLoginMode(e.target.dataset.mode);
+    });
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginError.textContent = "";
+      loginSubmit.disabled = true;
+      try {
+        const body = { username: loginUser.value.trim(), password: loginPass.value };
+        if (loginMode === "register" && bringWrap.style.display !== "none" && document.getElementById("bringProgress").checked) {
+          if (gameStarted && !auth) save(); // make sure the guest copy is up to date
+          try { body.save = JSON.parse(localStorage.getItem(GUEST_SAVE_KEY)); } catch (err) { /* no guest save */ }
+        }
+        const data = await api(loginMode, body);
+        auth = { token: data.token, username: data.user.username, isAdmin: data.user.isAdmin };
+        writeAuth(auth); // also tells other tabs (storage event) to reload as this account
+        // Switching from guest play: reload so nothing from the guest game leaks in
+        if (gameStarted) return location.reload();
+        loginEl.classList.remove("open");
+        loginPass.value = "";
+        loginSubmit.disabled = false;
+        let cloud = null;
+        try { cloud = (await api("load")).save; } catch (err) { /* new account or offline */ }
+        startGame(cloud);
+      } catch (err) {
+        loginError.textContent = err.status ? err.message : "Can't reach the server. Check your internet, or play as a guest.";
+        loginSubmit.disabled = false;
+      }
+    });
+
+    document.getElementById("guestBtn").addEventListener("click", () => {
+      loginEl.classList.remove("open");
+      if (!gameStarted) startGame(null);
+    });
+
+    // Logging in or out in another tab reloads this one to match
+    addEventListener("storage", (e) => { if (e.key === AUTH_KEY) location.reload(); });
+
+    // ---------- Account window ----------
+    function updateAccountUi() {
+      accountBtn.textContent = auth ? `👤 ${auth.username}` : "👤 Guest";
+      adminBtn.style.display = auth && auth.isAdmin ? "" : "none";
+      document.getElementById("accountTitle").textContent = auth ? `👤 ${auth.username}${auth.isAdmin ? " (admin)" : ""}` : "👤 Guest";
+      document.getElementById("accountMember").style.display = auth ? "" : "none";
+      document.getElementById("accountGuest").style.display = auth ? "none" : "";
+    }
+
+    function toggleAccount(open = !accountEl.classList.contains("open")) {
+      accountEl.classList.toggle("open", open);
+      if (open) loadLeaderboard();
+    }
+
+    async function loadLeaderboard() {
+      if (!auth) {
+        leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">Log in to see the leaderboard.</span><span></span></li>`;
+        return;
+      }
+      leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">Loading…</span><span></span></li>`;
+      await cloudSave(); // so your own score is up to date
+      try {
+        const { rows } = await api("leaderboard");
+        leaderboardEl.innerHTML = rows.map((r, i) => {
+          const skin = SKINS.find(k => k.id === r.skin) || SKINS[0];
+          const me = r.username.toLowerCase() === auth.username.toLowerCase();
+          return `<li class="${me ? "me" : ""}"><span class="rank">${i + 1}</span>${skinSvg(skin, "lb" + i)}` +
+            `<span class="name">${esc(r.username)}</span><span class="score">🍪 ${fmt(r.totalBaked)}</span></li>`;
+        }).join("");
+      } catch (e) {
+        leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">${esc(e.status ? e.message : "Can't reach the server.")}</span><span></span></li>`;
+      }
+    }
+
+    accountBtn.addEventListener("click", () => toggleAccount(true));
+    document.getElementById("accountClose").addEventListener("click", () => toggleAccount(false));
+    accountEl.addEventListener("click", (e) => { if (e.target === accountEl) toggleAccount(false); });
+    document.getElementById("toLoginBtn").addEventListener("click", () => { toggleAccount(false); showLogin(); });
+
+    document.getElementById("changePass").addEventListener("click", async () => {
+      const oldPass = document.getElementById("oldPass"), newPass = document.getElementById("newPass");
+      try {
+        await api("password", { oldPassword: oldPass.value, newPassword: newPass.value });
+        oldPass.value = newPass.value = "";
+        toast("🔑 Password changed. Other devices were logged out.");
+      } catch (e) {
+        toast("🔑 " + esc(e.status ? e.message : "Can't reach the server."));
+      }
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      save();
+      await cloudSave();
+      try { await api("logout"); } catch (e) { /* still log out locally */ }
+      writeAuth(null);
+      location.reload();
+    });
+
+    // ---------- Admin: accounts ----------
+    async function loadAdminUsers() {
+      adminUsersEl.textContent = "Loading accounts…";
+      try {
+        const { users } = await api("admin/users");
+        adminUsersEl.innerHTML = "";
+        for (const u of users) {
+          const isMe = u.username.toLowerCase() === auth.username.toLowerCase();
+          const row = document.createElement("div");
+          row.className = "user-row";
+          row.innerHTML = `<span class="name">${esc(u.username)}${u.isAdmin ? '<span class="badge">ADMIN</span>' : ""}${isMe ? " (you)" : ""}</span>` +
+            `<span class="score">🍪 ${fmt(u.totalBaked)}</span><span class="actions admin-grid"></span>`;
+          const actions = row.querySelector(".actions");
+          const add = (label, fn) => {
+            const b = document.createElement("button");
+            b.textContent = label;
+            b.addEventListener("click", fn);
+            actions.appendChild(b);
+          };
+          add("🔑 Set password", () => adminAction(`New password for ${u.username}:`, "admin/set-password",
+            (pw) => ({ username: u.username, newPassword: pw }), `Password for ${u.username} changed. Tell them the new one.`));
+          if (!isMe) {
+            add(u.isAdmin ? "⭐ Remove admin" : "⭐ Make admin", () => adminAction(null, "admin/set-admin",
+              () => ({ username: u.username, isAdmin: !u.isAdmin }), `${u.username} is ${u.isAdmin ? "no longer" : "now"} an admin.`,
+              `${u.isAdmin ? "Remove admin from" : "Make"} ${u.username}${u.isAdmin ? "" : " an admin"}?`));
+            add("🗑️ Delete", () => adminAction(null, "admin/delete-user", () => ({ username: u.username }),
+              `${u.username}'s account was deleted.`, `Delete ${u.username}'s account and all their progress? This can't be undone.`));
+          }
+          adminUsersEl.appendChild(row);
+        }
+      } catch (e) {
+        adminUsersEl.textContent = e.status ? e.message : "Can't reach the server.";
+      }
+    }
+
+    // ask = prompt text (for a value) or null; confirmText = yes/no question or undefined
+    async function adminAction(ask, action, makeBody, doneText, confirmText) {
+      let value = null;
+      if (ask) {
+        value = prompt(ask);
+        if (!value) return;
+      }
+      if (confirmText && !confirm(confirmText)) return;
+      try {
+        await api(action, makeBody(value));
+        toast("🛠️ " + esc(doneText));
+        loadAdminUsers();
+      } catch (e) {
+        toast("🛠️ " + esc(e.status ? e.message : "Can't reach the server."));
+      }
+    }
 
     // ================= Start =================
-    load();
-    computeEffects();
-
     function startAsLeader() {
       isLeader = true;
       leaderSince = Date.now();
@@ -1659,21 +2132,53 @@
       render();
     }
 
-    if (channel) {
-      // Ask whether another tab is already running the game. If one answers,
-      // we got its live state; take over only if this tab is the one on screen.
-      post({ type: "hello" });
-      setTimeout(() => {
-        if (isLeader) return; // already claimed by a tap during the wait
-        if (!lastLeaderMsg) startAsLeader();
-        else if (!document.hidden) becomeLeader();
-      }, 300);
-    } else {
-      startAsLeader();
+    function startGame(cloudSave) {
+      gameStarted = true;
+      updateAccountUi();
+      load(cloudSave);
+      computeEffects();
+      shownUpgradeIds = shownSkinKey = appliedSkin = null;
+      openChannel();
+      if (channel) {
+        // Ask whether another tab is already running the game. If one answers,
+        // we got its live state; take over only if this tab is the one on screen.
+        post({ type: "hello" });
+        setTimeout(() => {
+          if (isLeader) return; // already claimed by a tap during the wait
+          if (!lastLeaderMsg) startAsLeader();
+          else if (!document.hidden) becomeLeader();
+        }, 300);
+      } else {
+        startAsLeader();
+      }
+      render();
     }
 
+    async function boot() {
+      auth = readAuth();
+      if (!auth) return showLogin();
+      try {
+        const { user } = await api("me");
+        auth = { ...auth, username: user.username, isAdmin: user.isAdmin };
+        writeAuth(auth);
+      } catch (e) {
+        if (e.status === 401) {
+          writeAuth(null);
+          auth = null;
+          return showLogin("Please log in again.");
+        }
+        // Server unreachable: keep playing with the copy on this device
+        setCloudStatus("⚠️ Can't reach the server. Your progress is kept on this device and uploads when you're back online.");
+      }
+      let cloud = null;
+      try { cloud = (await api("load")).save; } catch (e) { /* offline: use this device's copy */ }
+      startGame(cloud);
+    }
+
+    computeEffects();
     render();
     requestAnimationFrame(frame);
+    boot();
   </script>
 </body>
 </html>
