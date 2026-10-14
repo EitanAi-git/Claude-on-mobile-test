@@ -15,6 +15,7 @@
       --good: #6ee7a8;
       --text: #fff6ec;
       --muted: rgba(255, 246, 236, 0.6);
+      --glow: 255, 204, 77; /* set by the cookie skin */
     }
 
     * { box-sizing: border-box; }
@@ -102,7 +103,7 @@
       position: absolute;
       inset: -18%;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(255, 204, 77, 0.35), transparent 65%);
+      background: radial-gradient(circle, rgba(var(--glow), 0.35), transparent 65%);
       animation: pulse 3s ease-in-out infinite;
       pointer-events: none;
     }
@@ -348,6 +349,61 @@
     }
     .buy-amount button.active { background: var(--gold); color: #3b2314; border-color: var(--gold); font-weight: 800; }
 
+    /* ---------- Skins ---------- */
+    #skins {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+      gap: 8px;
+    }
+
+    .skin {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 4px 6px;
+      border-radius: 14px;
+      border: 1px solid var(--panel-border);
+      background: rgba(255, 240, 220, 0.05);
+      color: var(--text);
+      font-size: 0.7rem;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+
+    .skin svg { width: 48px; height: 48px; }
+    .skin:hover { background: rgba(255, 240, 220, 0.12); }
+    .skin.selected { border-color: var(--gold); background: rgba(255, 204, 77, 0.15); font-weight: 800; }
+    .skin.locked svg { filter: grayscale(1) brightness(0.5); }
+    .skin.locked { color: var(--muted); }
+    .skin.locked::after {
+      content: "🔒";
+      position: absolute;
+      top: 18px;
+      font-size: 1.1rem;
+    }
+
+    /* Floats over the page so showing/hiding it never shifts what you're tapping */
+    #sync {
+      display: none;
+      position: fixed;
+      z-index: 8;
+      top: max(8px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: calc(100% - 32px);
+      text-align: center;
+      pointer-events: none;
+      background: rgba(20, 40, 70, 0.92);
+      border: 1px solid #5ab0ff;
+      color: #a9d4ff;
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 0.8rem;
+    }
+
     /* ---------- Golden cookie ---------- */
     #golden {
       position: fixed;
@@ -459,34 +515,10 @@
       <div id="cps">per second: 0</div>
       <div id="buff"></div>
       <button id="speed" title="Tap to go back to normal speed"></button>
+      <div id="sync">🔗 Synced with your other tab — tap anywhere to play here</div>
 
       <div class="cookie-wrap">
-        <button id="cookie" aria-label="Click the cookie">
-          <svg viewBox="0 0 200 200" aria-hidden="true">
-            <defs>
-              <radialGradient id="dough" cx="40%" cy="35%" r="70%">
-                <stop offset="0%" stop-color="#f2c27b"/>
-                <stop offset="60%" stop-color="#d99a4e"/>
-                <stop offset="100%" stop-color="#a8682b"/>
-              </radialGradient>
-            </defs>
-            <circle cx="100" cy="100" r="92" fill="url(#dough)" stroke="#8a5220" stroke-width="4"/>
-            <g fill="#4a2a12">
-              <ellipse cx="65" cy="60" rx="11" ry="9" transform="rotate(20 65 60)"/>
-              <ellipse cx="120" cy="50" rx="9" ry="7"/>
-              <ellipse cx="145" cy="95" rx="12" ry="9" transform="rotate(-30 145 95)"/>
-              <ellipse cx="95" cy="100" rx="10" ry="8" transform="rotate(45 95 100)"/>
-              <ellipse cx="55" cy="115" rx="9" ry="7"/>
-              <ellipse cx="110" cy="145" rx="12" ry="8" transform="rotate(10 110 145)"/>
-              <ellipse cx="70" cy="155" rx="7" ry="6"/>
-              <ellipse cx="150" cy="140" rx="8" ry="6"/>
-              <ellipse cx="85" cy="35" rx="6" ry="5"/>
-            </g>
-            <g fill="#ffe2b0" opacity="0.35">
-              <circle cx="60" cy="45" r="14"/>
-            </g>
-          </svg>
-        </button>
+        <button id="cookie" aria-label="Click the cookie"></button>
       </div>
 
       <div id="news">Welcome to your bakery. Click the cookie to start!</div>
@@ -514,6 +546,11 @@
           </span>
         </h2>
         <div id="buildings"></div>
+      </div>
+
+      <div class="panel">
+        <h2><span>Skins</span><span id="skinCount"></span></h2>
+        <div id="skins"></div>
       </div>
 
       <div class="panel">
@@ -568,12 +605,13 @@
         <button id="adminClearBuildings">Remove all buildings</button>
       </div>
 
-      <h4>Upgrades &amp; achievements</h4>
+      <h4>Upgrades, achievements &amp; skins</h4>
       <div class="admin-grid">
         <button id="adminAllUpgrades">Unlock all upgrades</button>
         <button id="adminClearUpgrades">Remove all upgrades</button>
         <button id="adminAllAch">Unlock all achievements</button>
         <button id="adminClearAch">Clear achievements</button>
+        <button id="adminAllSkins">Unlock all skins</button>
       </div>
 
       <h4>Golden cookies</h4>
@@ -715,6 +753,83 @@
       "News: portal to the Cookieverse 'mostly safe,' says nobody.",
     ];
 
+    // ================= Skins =================
+    // Each skin is drawn from these settings by skinSvg() below.
+    const SKINS = [
+      { id: "classic", name: "Classic", req: "Unlocked from the start", test: () => true,
+        glow: "255, 204, 77", dough: ["#f2c27b", "#d99a4e", "#a8682b"], rim: "#8a5220", chips: "#4a2a12" },
+      { id: "choc", name: "Double Choc", req: "Bake 1,000 cookies", test: s => s.totalBaked >= 1000,
+        glow: "190, 120, 70", dough: ["#9b6a48", "#6b4127", "#43271a"], rim: "#2a170b", chips: "#f5efe0" },
+      { id: "mint", name: "Mint Chip", req: "Own 10 grandmas", test: s => owned(s, "grandma") >= 10,
+        glow: "110, 231, 168", dough: ["#d5f7e3", "#9be0bb", "#5fb58b"], rim: "#3f8a66", chips: "#3b2314" },
+      { id: "strawberry", name: "Strawberry", req: "Bake 100,000 cookies", test: s => s.totalBaked >= 1e5,
+        glow: "255, 120, 170", dough: ["#f2c27b", "#d99a4e", "#a8682b"], rim: "#8a5220", chips: "#4a2a12", icing: "#ff8fb8", sprinkles: true },
+      { id: "donut", name: "Donut", req: "Click the cookie 1,000 times", test: s => s.totalClicks >= 1000,
+        glow: "255, 143, 184", dough: ["#f6d39a", "#e0a85c", "#b97a35"], rim: "#9a6328", donut: true, icing: "#ff8fb8", sprinkles: true },
+      { id: "golden", name: "Golden", req: "Click 10 golden cookies", test: s => s.goldenClicks >= 10,
+        glow: "255, 215, 0", dough: ["#fff6c4", "#ffd34d", "#d99a10"], rim: "#b07a0a", chips: "#a8740a" },
+      { id: "planet", name: "Planet", req: "Own a Rocket", test: s => owned(s, "rocket") >= 1,
+        glow: "90, 170, 255", dough: ["#9be7ff", "#3b8fd9", "#1d4f91"], rim: "#163a6b", continents: "#5fbf6a", ring: "#ffd27a" },
+      { id: "galaxy", name: "Galaxy", req: "Bake 1 trillion cookies", test: s => s.totalBaked >= 1e12,
+        glow: "170, 120, 255", dough: ["#6b4bd6", "#3a1f7a", "#120a2e"], rim: "#a78bfa", stars: true },
+      { id: "rainbow", name: "Rainbow", req: "Unlock every achievement", test: s => s.achievements.length >= ACHIEVEMENTS.length,
+        glow: "255, 138, 61", rainbow: true, rim: "#ffffff", chips: "#ffffff" },
+    ];
+
+    const CHIP_SPOTS = [[65, 60, 11, 9, 20], [120, 50, 9, 7, 0], [145, 95, 12, 9, -30], [95, 100, 10, 8, 45],
+      [55, 115, 9, 7, 0], [110, 145, 12, 8, 10], [70, 155, 7, 6, 0], [150, 140, 8, 6, 0], [85, 35, 6, 5, 0]];
+    const SPRINKLE_COLORS = ["#ffffff", "#ffe66d", "#5ab0ff", "#6ee7a8", "#b57bff"];
+
+    // uid keeps gradient IDs unique when several skins are on the page at once.
+    function skinSvg(k, uid) {
+      const g = `dough-${uid}`;
+      const gradient = k.rainbow
+        ? `<linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1">${["#ff5e5e", "#ffb347", "#ffe66d", "#6ee7a8", "#5ab0ff", "#b57bff"]
+            .map((c, i) => `<stop offset="${i / 5}" stop-color="${c}"/>`).join("")}</linearGradient>`
+        : `<radialGradient id="${g}" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="${k.dough[0]}"/>` +
+          `<stop offset="60%" stop-color="${k.dough[1]}"/><stop offset="100%" stop-color="${k.dough[2]}"/></radialGradient>`;
+      const ring = (r) => `M${100 - r} 100a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
+
+      let out = `<svg viewBox="0 0 200 200" aria-hidden="true"><defs>${gradient}</defs>`;
+      out += k.donut
+        ? `<path fill-rule="evenodd" d="${ring(92)} ${ring(30)}" fill="url(#${g})" stroke="${k.rim}" stroke-width="4"/>`
+        : `<circle cx="100" cy="100" r="92" fill="url(#${g})" stroke="${k.rim}" stroke-width="4"/>`;
+
+      if (k.chips) {
+        out += `<g fill="${k.chips}">` + CHIP_SPOTS.map(([x, y, rx, ry, rot]) =>
+          `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${x} ${y})"/>`).join("") + `</g>`;
+      }
+      if (k.continents) {
+        out += `<g fill="${k.continents}" opacity="0.9"><ellipse cx="70" cy="70" rx="24" ry="15" transform="rotate(20 70 70)"/>` +
+          `<ellipse cx="130" cy="125" rx="28" ry="16" transform="rotate(-20 130 125)"/><ellipse cx="78" cy="142" rx="14" ry="10"/>` +
+          `<ellipse cx="142" cy="62" rx="12" ry="8"/></g>`;
+      }
+      if (k.stars) {
+        // Golden-angle spiral of little stars
+        for (let i = 1; i <= 40; i++) {
+          const a = i * 2.39996, r = Math.sqrt(i / 40) * 82;
+          out += `<circle cx="${(100 + r * Math.cos(a)).toFixed(1)}" cy="${(100 + r * Math.sin(a)).toFixed(1)}" r="${i % 7 ? 1.6 : 3}" fill="#fff" opacity="${i % 3 ? 0.9 : 0.55}"/>`;
+        }
+      }
+      if (k.icing) {
+        out += k.donut
+          ? `<path fill-rule="evenodd" d="${ring(78)} ${ring(42)}" fill="${k.icing}"/>`
+          : `<path d="M40 85Q45 40 100 35Q160 38 162 90Q165 130 130 140Q120 120 105 138Q90 150 80 132Q60 140 48 120Q35 105 40 85Z" fill="${k.icing}"/>`;
+      }
+      if (k.sprinkles) {
+        for (let i = 0; i < 26; i++) {
+          const a = i * 2.39996, r = k.donut ? 48 + (i % 5) * 6 : Math.sqrt(i / 26) * 52;
+          const x = 100 + r * Math.cos(a), y = (k.donut ? 100 : 88) + r * Math.sin(a);
+          out += `<rect x="${(x - 5).toFixed(1)}" y="${(y - 1.5).toFixed(1)}" width="10" height="3" rx="1.5" fill="${SPRINKLE_COLORS[i % 5]}" transform="rotate(${(i * 47) % 180} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
+        }
+      }
+      if (k.ring) {
+        out += `<ellipse cx="100" cy="100" rx="97" ry="24" fill="none" stroke="${k.ring}" stroke-width="6" opacity="0.85" transform="rotate(-20 100 100)"/>`;
+      }
+      out += `<circle cx="60" cy="45" r="14" fill="#fff" opacity="0.25"/></svg>`;
+      return out;
+    }
+
     // ================= State =================
     const SAVE_KEY = "cookieClickerSave.v1";
     // Hard cap so cookie counts never overflow to Infinity (which turns into NaN when spent).
@@ -729,6 +844,8 @@
         buildings: {},
         upgrades: [],
         achievements: [],
+        skin: "classic",
+        skins: ["classic"],
         startedAt: Date.now(),
         lastSaved: Date.now(),
       };
@@ -804,6 +921,7 @@
 
     // ================= Save / load =================
     function save() {
+      if (!isLeader) return; // other tabs just mirror the leader
       state.lastSaved = Date.now();
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
     }
@@ -833,6 +951,8 @@
       }
       s.upgrades = idList(raw.upgrades, new Set(UPGRADES.map(u => u.id)), UPGRADE_RENAMES);
       s.achievements = idList(raw.achievements, new Set(ACHIEVEMENTS.map(a => a.id)));
+      s.skins = [...new Set(["classic", ...idList(raw.skins, new Set(SKINS.map(k => k.id)))])];
+      s.skin = s.skins.includes(raw.skin) ? raw.skin : "classic";
       state = s;
     }
 
@@ -944,6 +1064,7 @@
     const countEl = document.getElementById("count");
     const cpsEl = document.getElementById("cps");
     const speedEl = document.getElementById("speed");
+    const syncEl = document.getElementById("sync");
     const buffEl = document.getElementById("buff");
     const buildingsEl = document.getElementById("buildings");
     const upgradesEl = document.getElementById("upgrades");
@@ -1027,7 +1148,7 @@
         const have = owned(state, b.id);
         const cost = costFor(b, have, buyAmount);
         // Show a building once you own the previous one (or it's affordable-ish).
-        const visible = prevOwned || state.totalBaked >= b.base * 0.5;
+        const visible = have > 0 || prevOwned || state.totalBaked >= b.base * 0.5;
         r.row.style.display = visible ? "" : "none";
         const locked = have === 0 && state.totalBaked < b.base;
         r.row.classList.toggle("locked", locked);
@@ -1041,6 +1162,10 @@
       }
 
       renderUpgrades();
+      renderSkins();
+      applySkin();
+      for (const el of achEl.children) el.classList.toggle("got", state.achievements.includes(el.dataset.id));
+      syncEl.style.display = !isLeader && lastLeaderMsg ? "inline-block" : "none";
 
       const totalBuildings = BUILDINGS.reduce((s, b) => s + owned(state, b.id), 0);
       statsEl.innerHTML = `
@@ -1052,6 +1177,53 @@
         <span>Golden cookies clicked</span><span>${state.goldenClicks}</span>
         <span>Achievements</span><span>${state.achievements.length} / ${ACHIEVEMENTS.length}</span>
         <span>Time played</span><span>${fmtTime(Date.now() - state.startedAt)}</span>`;
+    }
+
+    // ---------- Skins panel ----------
+    const skinsEl = document.getElementById("skins");
+    const skinCountEl = document.getElementById("skinCount");
+    let shownSkinKey = null; // null = force a redraw
+    let appliedSkin = null;
+
+    function applySkin() {
+      if (appliedSkin === state.skin) return;
+      appliedSkin = state.skin;
+      const k = SKINS.find(x => x.id === state.skin) || SKINS[0];
+      cookieBtn.innerHTML = skinSvg(k, "main");
+      document.documentElement.style.setProperty("--glow", k.glow);
+    }
+
+    function renderSkins() {
+      const key = state.skin + "|" + state.skins.join(",");
+      if (key === shownSkinKey) return;
+      shownSkinKey = key;
+      skinCountEl.textContent = `${state.skins.length} / ${SKINS.length}`;
+      skinsEl.innerHTML = "";
+      for (const k of SKINS) {
+        const unlocked = state.skins.includes(k.id);
+        const btn = document.createElement("button");
+        btn.className = "skin" + (unlocked ? "" : " locked") + (state.skin === k.id ? " selected" : "");
+        btn.innerHTML = skinSvg(k, "pick-" + k.id) + `<span>${k.name}</span>`;
+        btn.title = unlocked ? `Wear the ${k.name} skin` : `Locked: ${k.req}`;
+        btn.setAttribute("aria-label", btn.title);
+        btn.addEventListener("click", () => {
+          if (!state.skins.includes(k.id)) return toast(`🔒 <b>${k.name}</b>: ${k.req} to unlock.`);
+          state.skin = k.id;
+          beep(700, 0.08, "triangle", 0.1);
+          render();
+        });
+        skinsEl.appendChild(btn);
+      }
+    }
+
+    function checkSkins() {
+      for (const k of SKINS) {
+        if (!state.skins.includes(k.id) && k.test(state)) {
+          state.skins.push(k.id);
+          toast(`🎨 New skin unlocked: <b>${k.name}</b>! Tap it in Skins to wear it.`);
+          chime();
+        }
+      }
     }
 
     // ================= Actions =================
@@ -1253,6 +1425,11 @@
       adminDone("Cleared achievements. (They re-unlock if you still qualify.)");
     });
 
+    document.getElementById("adminAllSkins").addEventListener("click", () => {
+      state.skins = SKINS.map(k => k.id);
+      adminDone(`Unlocked all ${SKINS.length} skins.`);
+    });
+
     document.getElementById("adminSpawnGolden").addEventListener("click", () => {
       toggleAdmin(false);
       spawnGolden();
@@ -1321,6 +1498,79 @@
       }
     });
 
+    // ================= Tab sync =================
+    // Only one tab, the "leader", runs the game: it earns cookies, spawns
+    // golden cookies and saves. Other tabs mirror the leader's state live.
+    // Whichever tab you look at or touch takes over as the leader, so two
+    // tabs can never overwrite each other's progress or earn twice.
+    const tabId = Math.random().toString(36).slice(2);
+    let isLeader = false;
+    let leaderSince = 0;   // when this tab became leader (newest leader wins)
+    let lastLeaderMsg = 0; // when this tab last heard from a leader
+    let channel = null;
+    try { channel = new BroadcastChannel("cookie-clicker-sync"); } catch (e) { /* unsupported: single-tab mode */ }
+
+    function post(msg) {
+      try { channel && channel.postMessage({ ...msg, from: tabId }); } catch (e) { /* ignore */ }
+    }
+
+    function broadcast() {
+      if (!isLeader || !channel) return;
+      advance(performance.now(), false); // catch up first in case animation frames were paused
+      post({ type: "state", since: leaderSince, state, buffUntil, buffName, buffMult, gameSpeed });
+    }
+
+    function becomeLeader() {
+      if (isLeader) return;
+      isLeader = true;
+      leaderSince = Date.now();
+      lastTick = performance.now(); // the old leader already earned for the time until now
+      post({ type: "claim", since: leaderSince });
+      broadcast();
+      render();
+    }
+
+    function becomeFollower() {
+      if (!isLeader) return;
+      isLeader = false;
+      lastLeaderMsg = Date.now(); // give the new leader time before we'd assume it's gone
+      golden.style.display = "none";
+      render();
+    }
+
+    // Is the sender a newer leader than this tab? (tab id breaks exact ties)
+    function isNewer(msg) {
+      return msg.since > leaderSince || (msg.since === leaderSince && msg.from > tabId);
+    }
+
+    if (channel) {
+      channel.onmessage = ({ data: msg }) => {
+        if (!msg || msg.from === tabId) return;
+        if (msg.type === "hello") {
+          broadcast(); // a new tab wants the current state
+        } else if (msg.type === "claim") {
+          if (isNewer(msg)) becomeFollower();
+        } else if (msg.type === "state") {
+          if (isLeader) {
+            if (!isNewer(msg)) return;
+            becomeFollower();
+          }
+          lastLeaderMsg = Date.now();
+          state = msg.state;
+          buffUntil = msg.buffUntil;
+          buffName = msg.buffName;
+          buffMult = msg.buffMult;
+          if (msg.gameSpeed !== gameSpeed) setGameSpeed(msg.gameSpeed);
+          computeEffects();
+        }
+      };
+    }
+
+    // Touching, typing in, focusing or switching to a tab makes it the leader.
+    document.addEventListener("pointerdown", becomeLeader, true);
+    document.addEventListener("keydown", becomeLeader, true);
+    addEventListener("focus", becomeLeader);
+
     // ================= Main loop =================
     let lastTick = performance.now();
     let lastSave = Date.now();
@@ -1335,25 +1585,29 @@
           chime();
         }
       }
-      for (const el of achEl.children) el.classList.toggle("got", state.achievements.includes(el.dataset.id));
     }
 
-    function frame(now) {
+    // Earn cookies for the time since the last call. Only the leader earns.
+    function advance(now, showToast) {
       const elapsed = (now - lastTick) / 1000;
       lastTick = now;
-
       cpsNow = currentCps();
+      if (!isLeader || elapsed <= 0) return;
       if (elapsed > 5) {
         // Browsers pause animation frames in background tabs and when the
         // phone is locked, so catch up on the time we missed.
         const gain = baseCps() * elapsed * gameSpeed;
         earn(gain);
-        if (gain >= 1) toast(`👋 Welcome back! Your bakery made <b>${fmt(gain)}</b> cookies while you were away.`);
+        if (showToast && gain >= 1) toast(`👋 Welcome back! Your bakery made <b>${fmt(gain)}</b> cookies while you were away.`);
       } else {
         earn(cpsNow * elapsed * gameSpeed);
       }
+    }
 
-      if (Date.now() > nextGolden) {
+    function frame(now) {
+      advance(now, true);
+
+      if (isLeader && Date.now() > nextGolden) {
         spawnGolden();
         nextGolden = Date.now() + randomGoldenDelay();
       }
@@ -1364,18 +1618,25 @@
 
     // Slower UI/bookkeeping tick (keeps the page light on phones)
     setInterval(() => {
+      if (isLeader) {
+        checkAchievements();
+        checkSkins();
+        if (Date.now() - lastSave > 5000) { save(); lastSave = Date.now(); }
+        broadcast();
+      } else if (lastLeaderMsg && Date.now() - lastLeaderMsg > 3000 && !document.hidden) {
+        becomeLeader(); // the leader tab was closed or frozen
+      }
       render();
-      checkAchievements();
-      if (Date.now() - lastSave > 5000) { save(); lastSave = Date.now(); }
       if (Date.now() - lastNews > 12000) {
         lastNews = Date.now();
         newsEl.textContent = NEWS[Math.floor(Math.random() * NEWS.length)];
       }
     }, 100);
 
-    // Catch up when returning to a background tab, and save when leaving.
+    // Save when leaving; switching back to this tab makes it the leader.
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) save();
+      else becomeLeader();
     });
     addEventListener("pagehide", save);
 
@@ -1383,16 +1644,35 @@
     load();
     computeEffects();
 
-    // Offline earnings: half speed while away, up to 2 hours.
-    const away = Math.min((Date.now() - state.lastSaved) / 1000, 7200);
-    if (away > 10 && baseCps() > 0) {
-      const offline = baseCps() * away * 0.5;
-      earn(offline);
-      setTimeout(() => toast(`👋 Welcome back! Your bakery made <b>${fmt(offline)}</b> cookies while you were away.`), 400);
+    function startAsLeader() {
+      isLeader = true;
+      leaderSince = Date.now();
+      lastTick = performance.now();
+      // Offline earnings: half speed while away, up to 2 hours.
+      const away = Math.min((Date.now() - state.lastSaved) / 1000, 7200);
+      if (away > 10 && baseCps() > 0) {
+        const offline = baseCps() * away * 0.5;
+        earn(offline);
+        toast(`👋 Welcome back! Your bakery made <b>${fmt(offline)}</b> cookies while you were away.`);
+      }
+      post({ type: "claim", since: leaderSince });
+      render();
+    }
+
+    if (channel) {
+      // Ask whether another tab is already running the game. If one answers,
+      // we got its live state; take over only if this tab is the one on screen.
+      post({ type: "hello" });
+      setTimeout(() => {
+        if (isLeader) return; // already claimed by a tap during the wait
+        if (!lastLeaderMsg) startAsLeader();
+        else if (!document.hidden) becomeLeader();
+      }, 300);
+    } else {
+      startAsLeader();
     }
 
     render();
-    checkAchievements();
     requestAnimationFrame(frame);
   </script>
 </body>
