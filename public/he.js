@@ -75,7 +75,7 @@ window.HE = {
     "🗑️ Bakery reset. Time to start baking again!": "🗑️ המאפייה אופסה. הזמן להתחיל לאפות שוב!",
     "Reset your bakery? All cookies, buildings and upgrades will be lost.": "לאפס את המאפייה? כל העוגיות, המבנים והשדרוגים יימחקו.",
     "✨ <b>Frenzy!</b> Cookie production x7 for {n} seconds!": "✨ <b>טירוף!</b> ייצור עוגיות x7 למשך {n} שניות!",
-    "✨ <b>Click Frenzy!</b> Clicks are x77 for {n} seconds!": "✨ <b>טירוף לחיצות!</b> לחיצות x77 למשך {n} שניות!",
+    "✨ <b>Click Frenzy!</b> Clicks are x{mult} for {n} seconds!": "✨ <b>טירוף לחיצות!</b> לחיצות x{mult} למשך {n} שניות!",
     "✨ <b>Lucky!</b> +{n} cookies!": "✨ <b>מזל!</b> <bdi dir=\"ltr\">+{n}</bdi> עוגיות!",
     "🏆 Achievement unlocked: <b>{name}</b><br><small>{desc}</small>": "🏆 הישג חדש: <b>{name}</b><br><small>{desc}</small>",
     "👋 Welcome back! Your bakery made <b>{n}</b> cookies while you were away.": "👋 ברוכים השבים! המאפייה שלכם אפתה <b>{n}</b> עוגיות בזמן שלא הייתם.",
