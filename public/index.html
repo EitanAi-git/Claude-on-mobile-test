@@ -1248,27 +1248,114 @@
     }
 
     // ================= Sound =================
-    let audio;
-    function beep(freq, duration = 0.08, type = "sine", volume = 0.1) {
-      if (!soundOn) return;
-      try {
-        audio = audio || new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audio.createOscillator();
-        const gain = audio.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audio.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(freq * 1.4, audio.currentTime + duration);
-        gain.gain.setValueAtTime(volume, audio.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
-        osc.connect(gain).connect(audio.destination);
-        osc.start();
-        osc.stop(audio.currentTime + duration);
-      } catch (e) { /* audio unavailable */ }
+    // All sounds are made in code (no audio files). They go through one
+    // master volume and a compressor, so they're loud without crackling
+    // when lots of them overlap (e.g. very fast clicking).
+    const MASTER_VOLUME = 2.4;
+    let audio = null;
+    let master = null;
+    const noiseBuffers = new WeakMap();
+
+    function makeMaster(ctx) {
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -12;
+      comp.knee.value = 6;
+      comp.ratio.value = 10;
+      comp.attack.value = 0.001;
+      comp.release.value = 0.12;
+      const gain = ctx.createGain();
+      gain.gain.value = MASTER_VOLUME;
+      gain.connect(comp).connect(ctx.destination);
+      return gain;
     }
 
-    function chime() {
-      [659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.15, "triangle", 0.12), i * 90));
+    // The live audio output, or null when muted / unavailable
+    function audioOut() {
+      if (!soundOn) return null;
+      try {
+        if (!audio) {
+          audio = new (window.AudioContext || window.webkitAudioContext)();
+          master = makeMaster(audio);
+        }
+        if (audio.state === "suspended") audio.resume(); // phones start audio paused until a tap
+        return audio;
+      } catch (e) { return null; }
     }
+
+    function noiseBuffer(ctx) {
+      if (!noiseBuffers.has(ctx)) {
+        const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.2), ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        noiseBuffers.set(ctx, buf);
+      }
+      return noiseBuffers.get(ctx);
+    }
+
+    // Quick attack, smooth fade: avoids clicks at the start/end of each sound
+    function envelope(ctx, t, peak, decay, attack = 0.003) {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+      return g;
+    }
+
+    function tone(ctx, out, t, freq, { type = "sine", peak = 0.2, decay = 0.12, slideTo = null } = {}) {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + decay);
+      osc.connect(envelope(ctx, t, peak, decay)).connect(out);
+      osc.start(t);
+      osc.stop(t + decay + 0.02);
+    }
+
+    // The cookie click: a soft thump + a crunchy crumble + a bright pop,
+    // with a little random pitch so fast clicking doesn't sound robotic.
+    function clickSound(ctx, out, t) {
+      const p = 1 + (Math.random() - 0.5) * 0.14;
+      tone(ctx, out, t, 230 * p, { peak: 0.45, decay: 0.11, slideTo: 65 });            // thump
+      const crunch = ctx.createBufferSource();
+      crunch.buffer = noiseBuffer(ctx);
+      const band = ctx.createBiquadFilter();
+      band.type = "bandpass";
+      band.frequency.value = 2600 * p;
+      band.Q.value = 0.9;
+      crunch.connect(band).connect(envelope(ctx, t, 0.35, 0.05, 0.001)).connect(out);  // crumble
+      crunch.start(t, Math.random() * 0.1);
+      crunch.stop(t + 0.07);
+      tone(ctx, out, t + 0.004, 900 * p, { type: "triangle", peak: 0.16, decay: 0.07, slideTo: 560 }); // pop
+    }
+
+    // Buying a building: a short "ka-ching"
+    function buySound(ctx, out, t) {
+      tone(ctx, out, t, 880, { type: "triangle", peak: 0.22, decay: 0.08 });
+      tone(ctx, out, t + 0.07, 1320, { type: "triangle", peak: 0.22, decay: 0.16 });
+      tone(ctx, out, t + 0.07, 2640, { type: "sine", peak: 0.05, decay: 0.12 });
+    }
+
+    // Upgrades, achievements, golden cookies: a bright rising arpeggio
+    function chimeSound(ctx, out, t) {
+      [659, 784, 1047, 1319].forEach((f, i) => {
+        tone(ctx, out, t + i * 0.08, f, { type: "triangle", peak: 0.2, decay: 0.22 });
+        tone(ctx, out, t + i * 0.08, f * 2, { type: "sine", peak: 0.04, decay: 0.18 });
+      });
+    }
+
+    function play(sound) {
+      const ctx = audioOut();
+      if (ctx) try { sound(ctx, master, ctx.currentTime); } catch (e) { /* audio unavailable */ }
+    }
+
+    // Simple tone for small UI sounds (e.g. picking a skin)
+    function beep(freq, duration = 0.08, type = "sine", volume = 0.1) {
+      play((ctx, out, t) => tone(ctx, out, t, freq, { type, peak: volume * 2, decay: duration, slideTo: freq * 1.4 }));
+    }
+
+    function chime() { play(chimeSound); }
+
+    let lastClickSound = 0;
 
     // ================= Particles =================
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1533,7 +1620,11 @@
       const y = e.clientY || rect.top + rect.height / 2;
       floatNum("+" + fmt(v, 1), x, y);
       crumbs(x, y, 8);
-      beep(420 + Math.random() * 80, 0.06, "sine", 0.08);
+      // At most ~30 click sounds a second; faster than that just sounds like noise
+      if (performance.now() - lastClickSound > 33) {
+        lastClickSound = performance.now();
+        play(clickSound);
+      }
       if (navigator.vibrate) navigator.vibrate(8);
     });
 
@@ -1543,7 +1634,7 @@
       if (!Number.isFinite(cost) || state.cookies < cost) return;
       state.cookies -= cost;
       state.buildings[b.id] = have + buyAmount;
-      beep(600, 0.1, "triangle", 0.1);
+      play(buySound);
       if (e && e.clientX) crumbs(e.clientX, e.clientY, 10, ["#ffcc4d", "#ff8a3d", "#fff6ec"]);
       if (have === 0) toast(`${b.icon} <b>${b.name}</b> unlocked! ${b.desc}`);
     }
