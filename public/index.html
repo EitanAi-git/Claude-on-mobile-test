@@ -1820,8 +1820,10 @@
         buffName = "Frenzy"; buffMult = 7; buffUntil = Date.now() + 30000 * dur;
         toast(t("✨ <b>Frenzy!</b> Cookie production x7 for {n} seconds!", { n: 30 * dur }));
       } else if (kind === "clickFrenzy") {
-        buffName = "Click Frenzy"; buffMult = 77; buffUntil = Date.now() + 13000 * dur;
-        toast(t("✨ <b>Click Frenzy!</b> Clicks are x77 for {n} seconds!", { n: 13 * dur }));
+        buffName = "Click Frenzy";
+        buffMult = 5 + Math.floor(Math.random() * 7); // x5 to x11
+        buffUntil = Date.now() + 13000 * dur;
+        toast(t("✨ <b>Click Frenzy!</b> Clicks are x{mult} for {n} seconds!", { mult: buffMult, n: 13 * dur }));
       } else {
         const gain = Math.max(13, Math.min(state.cookies * 0.15, baseCps() * 900));
         earn(gain);
