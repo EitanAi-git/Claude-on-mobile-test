@@ -138,6 +138,9 @@
     #cookie:focus-visible { outline: 3px solid var(--gold); outline-offset: 8px; border-radius: 50%; }
     #cookie svg { width: 100%; height: 100%; display: block; }
 
+    /* "+1K", "+10", "+1.5" always read left-to-right, even on the Hebrew page */
+    [data-amt], [data-bn], [data-pbn], .float-num { direction: ltr; unicode-bidi: isolate; }
+
     .float-num {
       position: fixed;
       z-index: 6;
@@ -206,7 +209,7 @@
     }
 
     #upgrades:empty::after {
-      content: "Keep baking to unlock upgrades…";
+      content: attr(data-empty);
       color: var(--muted);
       font-size: 0.85rem;
       align-self: center;
@@ -381,7 +384,7 @@
       color: var(--text);
     }
     .login-tabs button.active { background: var(--gold); color: #3b2314; border-color: var(--gold); font-weight: 800; }
-    .login-box label { display: flex; flex-direction: column; gap: 4px; text-align: left; font-size: 0.85rem; color: var(--muted); }
+    .login-box label { display: flex; flex-direction: column; gap: 4px; text-align: start; font-size: 0.85rem; color: var(--muted); }
     .login-box input[type="text"], .login-box input[type="password"] {
       background: rgba(255, 255, 255, 0.07);
       border: 1px solid var(--panel-border);
@@ -403,7 +406,7 @@
       align-items: center;
       gap: 12px;
       width: 100%;
-      text-align: left;
+      text-align: start;
       padding: 10px 12px;
       margin-bottom: 8px;
       border-radius: 14px;
@@ -575,7 +578,7 @@
       font-size: 0.85rem;
     }
     .stats-grid span:nth-child(odd) { color: var(--muted); }
-    .stats-grid span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+    .stats-grid span:nth-child(even) { text-align: end; font-variant-numeric: tabular-nums; font-weight: 700; }
 
     .ach-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     .ach {
@@ -618,6 +621,7 @@
         <button class="small-btn" id="resetBtn">🗑️ Reset</button>
         <button class="small-btn" id="adminBtn" style="display: none">🛠️ Admin</button>
         <button class="small-btn" id="accountBtn">👤 Account</button>
+        <button class="small-btn lang-btn" id="langBtn"></button>
       </div>
     </section>
 
@@ -686,6 +690,7 @@
       <button type="submit" class="login-go" id="loginSubmit">Log in</button>
       <p class="login-note">You'll stay logged in on this device until you log out. Forgot your password? Ask the admin to set a new one.</p>
       <button type="button" class="login-guest" id="guestBtn">Play as guest (saves on this device only)</button>
+      <button type="button" class="login-guest lang-btn" id="loginLangBtn"></button>
     </form>
   </div>
 
@@ -838,7 +843,34 @@
     </div>
   </div>
 
+  <script src="he.js"></script>
   <script>
+    // ================= Language =================
+    // English is built in; Hebrew comes from he.js. The choice is remembered
+    // on this device. t() returns the text in the chosen language and fills
+    // in {placeholders}.
+    const LANG_KEY = "cookieClickerLang";
+    const LANG = (() => {
+      try { return localStorage.getItem(LANG_KEY) === "he" && window.HE ? "he" : "en"; } catch (e) { return "en"; }
+    })();
+    document.documentElement.lang = LANG;
+    document.documentElement.dir = LANG === "he" ? "rtl" : "ltr";
+
+    function t(text, vars = {}) {
+      let out = (LANG === "he" && HE.strings[text]) || text;
+      for (const [k, v] of Object.entries(vars)) out = out.split("{" + k + "}").join(v);
+      return out;
+    }
+
+    // Swap names/descriptions of game items (buildings, skins...) for the Hebrew ones
+    function translateItems(list, table, fields) {
+      if (LANG !== "he" || !table) return;
+      for (const item of list) {
+        const tr = table[item.id];
+        if (tr) fields.forEach((f, i) => { if (tr[i]) item[f] = tr[i]; });
+      }
+    }
+
     // ================= Game data =================
     const BUILDINGS = [
       { id: "cursor",  name: "Cursor",       icon: "👆", base: 15,          cps: 0.1,    desc: "Clicks the cookie for you." },
@@ -858,6 +890,8 @@
       { id: "dragon",      name: "Cookie Dragon", icon: "🐉", base: 26e15, cps: 2.1e10, desc: "Hoards cookies. Then breathes out even more." },
       { id: "singularity", name: "Singularity",  icon: "🕳️", base: 3.1e17, cps: 1.5e11, desc: "Everything collapses into cookies." },
     ];
+
+    translateItems(BUILDINGS, LANG === "he" && HE.data.buildings, ["name", "desc"]);
 
     // Upgrades: unlock when a condition is met, then can be bought once.
     const UPGRADES = [
@@ -879,6 +913,8 @@
       { id: "lucky3", icon: "⏰", name: "Get Lucky",          cost: 7.7e9,    desc: "Golden cookie buffs last twice as long.", unlock: s => s.goldenClicks >= 25,          apply: e => e.buffTime *= 2 },
     ];
 
+    translateItems(UPGRADES, LANG === "he" && HE.data.upgrades, ["name", "desc"]);
+
     // Every building gets 5 tiers of "twice as efficient" upgrades.
     const TIERS = [
       { need: 1,   costX: 10,    name: "I" },
@@ -888,14 +924,14 @@
       { need: 100, costX: 5e6,   name: "V" },
     ];
     for (const b of BUILDINGS) {
-      TIERS.forEach((t, i) => UPGRADES.push({
+      TIERS.forEach((tier, i) => UPGRADES.push({
         id: `${b.id}_${i + 1}`,
         icon: b.icon,
-        tier: t.name,
-        name: `${b.name} Boost ${t.name}`,
-        cost: b.base * t.costX,
-        desc: `${b.name}s are twice as efficient.`,
-        unlock: s => owned(s, b.id) >= t.need,
+        tier: tier.name,
+        name: t("{building} Boost {tier}", { building: b.name, tier: tier.name }),
+        cost: b.base * tier.costX,
+        desc: t("{building}s are twice as efficient.", { building: b.name }),
+        unlock: s => owned(s, b.id) >= tier.need,
         apply: e => e.mult[b.id] *= 2,
       }));
     }
@@ -932,6 +968,8 @@
       { id: "dragon",icon: "🐉", name: "Dragon Tamer",      desc: "Own a Cookie Dragon.",             test: s => owned(s, "dragon") >= 1 },
       { id: "sing",  icon: "🕳️", name: "Event Horizon",     desc: "Own a Singularity.",               test: s => owned(s, "singularity") >= 1 },
     ];
+
+    translateItems(ACHIEVEMENTS, LANG === "he" && HE.data.achievements, ["name", "desc"]);
 
     const NEWS = [
       "News: local bakery smells suspiciously amazing.",
@@ -1187,6 +1225,9 @@
       return out;
     }
 
+    translateItems(SKINS, LANG === "he" && HE.data.skins, ["name", "req"]);
+    if (LANG === "he") NEWS.splice(0, NEWS.length, ...HE.data.news);
+
     // ================= State =================
     const GUEST_SAVE_KEY = "cookieClickerSave.v1";
     let auth = null; // { token, username, isAdmin } when logged in; null for guests
@@ -1263,6 +1304,7 @@
     // ================= Formatting =================
     const SUFFIXES = ["", " thousand", " million", " billion", " trillion", " quadrillion", " quintillion", " sextillion",
       " septillion", " octillion", " nonillion", " decillion"];
+    if (LANG === "he") SUFFIXES.splice(0, SUFFIXES.length, ...HE.suffixes);
 
     function fmt(n, decimals = 0) {
       if (!Number.isFinite(n)) return "∞";
@@ -1280,7 +1322,7 @@
     function fmtTime(ms) {
       const s = Math.floor(ms / 1000);
       const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-      return h ? `${h}h ${m}m` : m ? `${m}m ${sec}s` : `${sec}s`;
+      return h ? t("{h}h {m}m", { h, m }) : m ? t("{m}m {s}s", { m, s: sec }) : t("{s}s", { s: sec });
     }
 
     // ================= Save / load =================
@@ -1533,7 +1575,7 @@
           btn.dataset.id = u.id;
           btn.textContent = u.icon;
           if (u.tier) btn.dataset.tier = u.tier;
-          btn.title = `${u.name} — ${u.desc} (Cost: ${fmt(u.cost)})`;
+          btn.title = t("{name} — {desc} (Cost: {cost})", { name: u.name, desc: u.desc, cost: fmt(u.cost) });
           btn.setAttribute("aria-label", btn.title);
           btn.addEventListener("click", () => buyUpgrade(u));
           upgradesEl.appendChild(btn);
@@ -1546,15 +1588,16 @@
     }
 
     function render() {
-      countEl.textContent = fmt(Math.floor(state.cookies)) + (Math.floor(state.cookies) === 1 ? " cookie" : " cookies");
-      cpsEl.textContent = "per second: " + fmt(cpsNow, 1);
+      const whole = Math.floor(state.cookies);
+      countEl.textContent = t(whole === 1 ? "{n} cookie" : "{n} cookies", { n: fmt(whole) });
+      cpsEl.textContent = t("per second: {n}", { n: fmt(cpsNow, 1) });
       speedEl.style.display = gameSpeed === 1 ? "none" : "inline-block";
-      speedEl.textContent = `⏩ Admin speed x${gameSpeed}`;
-      document.title = fmt(Math.floor(state.cookies)) + " cookies - Cookie Clicker";
+      speedEl.textContent = t("⏩ Admin speed x{n}", { n: gameSpeed });
+      document.title = t("{n} cookies - Cookie Clicker", { n: fmt(whole) });
 
       const buffActive = Date.now() < buffUntil;
       buffEl.style.display = buffActive ? "inline-block" : "none";
-      if (buffActive) buffEl.textContent = `${buffName} x${buffMult}! ${Math.ceil((buffUntil - Date.now()) / 1000)}s`;
+      if (buffActive) buffEl.textContent = t("{name} x{mult}! {s}s", { name: t(buffName), mult: buffMult, s: Math.ceil((buffUntil - Date.now()) / 1000) });
 
       let prevOwned = true;
       for (const b of BUILDINGS) {
@@ -1567,11 +1610,11 @@
         const locked = have === 0 && state.totalBaked < b.base;
         r.row.classList.toggle("locked", locked);
         r.row.disabled = !Number.isFinite(cost) || state.cookies < cost;
-        r.cost.textContent = "🍪 " + fmt(cost) + (buyAmount > 1 ? ` (x${buyAmount})` : "");
+        r.cost.textContent = buyAmount > 1 ? t("🍪 {cost} (x{n})", { cost: fmt(cost), n: buyAmount }) : "🍪 " + fmt(cost);
         r.owned.textContent = fmt(have);
         const each = b.cps * effects.mult[b.id] * effects.globalMult;
-        r.info.textContent = locked ? "???" : `${b.desc} Each makes ${fmt(each, 1)}/s.`;
-        r.row.title = `${b.name}: ${fmt(buildingCps(b) * effects.globalMult, 1)}/s total`;
+        r.info.textContent = locked ? "???" : t("{desc} Each makes {n}/s.", { desc: b.desc, n: fmt(each, 1) });
+        r.row.title = t("{name}: {n}/s total", { name: b.name, n: fmt(buildingCps(b) * effects.globalMult, 1) });
         prevOwned = have > 0;
       }
 
@@ -1583,15 +1626,15 @@
 
       const totalBuildings = BUILDINGS.reduce((s, b) => s + owned(state, b.id), 0);
       statsEl.innerHTML = `
-        <span>Cookies baked (all time)</span><span>${fmt(Math.floor(state.totalBaked))}</span>
-        <span>Cookie clicks</span><span>${fmt(state.totalClicks)}</span>
-        <span>Clicking speed</span><span>${clicksPerSecond()} / sec</span>
-        <span>Cookies per click</span><span>${fmt(clickValue(), 1)}</span>
-        <span>Buildings owned</span><span>${fmt(totalBuildings)}</span>
-        <span>Upgrades bought</span><span>${state.upgrades.length} / ${UPGRADES.length}</span>
-        <span>Golden cookies clicked</span><span>${state.goldenClicks}</span>
-        <span>Achievements</span><span>${state.achievements.length} / ${ACHIEVEMENTS.length}</span>
-        <span>Time played</span><span>${fmtTime(Date.now() - state.startedAt)}</span>`;
+        <span>${t("Cookies baked (all time)")}</span><span>${fmt(Math.floor(state.totalBaked))}</span>
+        <span>${t("Cookie clicks")}</span><span>${fmt(state.totalClicks)}</span>
+        <span>${t("Clicking speed")}</span><span>${t("{n} / sec", { n: clicksPerSecond() })}</span>
+        <span>${t("Cookies per click")}</span><span>${fmt(clickValue(), 1)}</span>
+        <span>${t("Buildings owned")}</span><span>${fmt(totalBuildings)}</span>
+        <span>${t("Upgrades bought")}</span><span>${state.upgrades.length} / ${UPGRADES.length}</span>
+        <span>${t("Golden cookies clicked")}</span><span>${state.goldenClicks}</span>
+        <span>${t("Achievements")}</span><span>${state.achievements.length} / ${ACHIEVEMENTS.length}</span>
+        <span>${t("Time played")}</span><span>${fmtTime(Date.now() - state.startedAt)}</span>`;
     }
 
     // ---------- Skins panel ----------
@@ -1619,10 +1662,10 @@
         const btn = document.createElement("button");
         btn.className = "skin" + (unlocked ? "" : " locked") + (state.skin === k.id ? " selected" : "");
         btn.innerHTML = skinSvg(k, "pick-" + k.id) + `<span>${k.name}</span>`;
-        btn.title = unlocked ? `Wear the ${k.name} skin` : `Locked: ${k.req}`;
+        btn.title = unlocked ? t("Wear the {name} skin", { name: k.name }) : t("Locked: {req}", { req: k.req });
         btn.setAttribute("aria-label", btn.title);
         btn.addEventListener("click", () => {
-          if (!state.skins.includes(k.id)) return toast(`🔒 <b>${k.name}</b>: ${k.req} to unlock.`);
+          if (!state.skins.includes(k.id)) return toast(t("🔒 <b>{name}</b>: {req} to unlock.", { name: k.name, req: k.req }));
           state.skin = k.id;
           beep(700, 0.08, "triangle", 0.12);
           render();
@@ -1635,7 +1678,7 @@
       for (const k of SKINS) {
         if (!state.skins.includes(k.id) && k.test(state)) {
           state.skins.push(k.id);
-          toast(`🎨 New skin unlocked: <b>${k.name}</b>! Tap it in Skins to wear it.`);
+          toast(t("🎨 New skin unlocked: <b>{name}</b>! Tap it in Skins to wear it.", { name: k.name }));
           chime();
         }
       }
@@ -1703,7 +1746,7 @@
       state.buildings[b.id] = have + buyAmount;
       beep(600, 0.1, "triangle", 0.12);
       if (e && e.clientX) crumbs(e.clientX, e.clientY, 10, ["#ffcc4d", "#ff8a3d", "#fff6ec"]);
-      if (have === 0) toast(`${b.icon} <b>${b.name}</b> unlocked! ${b.desc}`);
+      if (have === 0) toast(t("{icon} <b>{name}</b> unlocked! {desc}", { icon: b.icon, name: b.name, desc: b.desc }));
     }
 
     function buyUpgrade(u) {
@@ -1724,11 +1767,11 @@
 
     document.getElementById("soundToggle").addEventListener("click", (e) => {
       soundOn = !soundOn;
-      e.currentTarget.textContent = soundOn ? "🔊 Sound" : "🔇 Muted";
+      e.currentTarget.textContent = t(soundOn ? "🔊 Sound" : "🔇 Muted");
     });
 
     document.getElementById("resetBtn").addEventListener("click", () => {
-      if (!confirm("Reset your bakery? All cookies, buildings and upgrades will be lost.")) return;
+      if (!confirm(t("Reset your bakery? All cookies, buildings and upgrades will be lost."))) return;
       replaceState(freshState());
       computeEffects();
       buffUntil = 0;
@@ -1739,7 +1782,7 @@
       for (const el of achEl.children) el.classList.remove("got");
       save();
       cloudSave();
-      toast("🗑️ Bakery reset. Time to start baking again!");
+      toast(t("🗑️ Bakery reset. Time to start baking again!"));
     });
 
     // ================= Golden cookie =================
@@ -1772,17 +1815,17 @@
     });
 
     function goldenEffect(kind) {
-      const t = effects.buffTime;
+      const dur = effects.buffTime;
       if (kind === "frenzy") {
-        buffName = "Frenzy"; buffMult = 7; buffUntil = Date.now() + 30000 * t;
-        toast(`✨ <b>Frenzy!</b> Cookie production x7 for ${30 * t} seconds!`);
+        buffName = "Frenzy"; buffMult = 7; buffUntil = Date.now() + 30000 * dur;
+        toast(t("✨ <b>Frenzy!</b> Cookie production x7 for {n} seconds!", { n: 30 * dur }));
       } else if (kind === "clickFrenzy") {
-        buffName = "Click Frenzy"; buffMult = 77; buffUntil = Date.now() + 13000 * t;
-        toast(`✨ <b>Click Frenzy!</b> Clicks are x77 for ${13 * t} seconds!`);
+        buffName = "Click Frenzy"; buffMult = 77; buffUntil = Date.now() + 13000 * dur;
+        toast(t("✨ <b>Click Frenzy!</b> Clicks are x77 for {n} seconds!", { n: 13 * dur }));
       } else {
         const gain = Math.max(13, Math.min(state.cookies * 0.15, baseCps() * 900));
         earn(gain);
-        toast(`✨ <b>Lucky!</b> +${fmt(gain)} cookies!`);
+        toast(t("✨ <b>Lucky!</b> +{n} cookies!", { n: fmt(gain) }));
       }
       chime();
     }
@@ -1808,7 +1851,7 @@
       computeEffects();
       shownUpgradeIds = null;
       render();
-      toast("🛠️ " + msg);
+      toast(msg);
     }
 
     document.getElementById("adminBtn").addEventListener("click", () => toggleAdmin(true));
@@ -1825,60 +1868,60 @@
       const amt = Number(e.target.dataset.amt);
       if (!amt) return;
       earn(amt);
-      adminDone(`Added ${fmt(amt)} cookies.`);
+      adminDone(t("🛠️ Added {n} cookies.", { n: fmt(amt) }));
     });
 
     document.getElementById("adminSet").addEventListener("click", () => {
       const input = document.getElementById("adminSetInput").value.trim();
       const v = Number(input);
-      if (input === "" || !Number.isFinite(v) || v < 0) return toast("🛠️ Enter a number of 0 or more.");
+      if (input === "" || !Number.isFinite(v) || v < 0) return toast(t("🛠️ Enter a number of 0 or more."));
       state.cookies = Math.min(v, MAX_COOKIES);
       state.totalBaked = Math.max(state.totalBaked, state.cookies);
-      adminDone(`Cookies set to ${fmt(v)}.`);
+      adminDone(t("🛠️ Cookies set to {n}.", { n: fmt(v) }));
     });
 
     adminEl.querySelectorAll("[data-bn]").forEach(btn => btn.addEventListener("click", () => {
       const b = BUILDINGS.find(x => x.id === adminBuildingSel.value);
       const n = Number(btn.dataset.bn);
       state.buildings[b.id] = owned(state, b.id) + n;
-      adminDone(`Gave ${n} ${b.name}${n > 1 ? "s" : ""}.`);
+      adminDone(t("🛠️ Gave {n} × {name}.", { n, name: b.name }));
     }));
 
     document.getElementById("adminAllBuildings").addEventListener("click", () => {
       for (const b of BUILDINGS) state.buildings[b.id] = owned(state, b.id) + 10;
-      adminDone("Gave 10 of every building.");
+      adminDone(t("🛠️ Gave 10 of every building."));
     });
 
     document.getElementById("adminClearBuildings").addEventListener("click", () => {
       state.buildings = {};
-      adminDone("Removed all buildings.");
+      adminDone(t("🛠️ Removed all buildings."));
     });
 
     document.getElementById("adminAllUpgrades").addEventListener("click", () => {
       state.upgrades = UPGRADES.map(u => u.id);
-      adminDone(`Unlocked all ${UPGRADES.length} upgrades.`);
+      adminDone(t("🛠️ Unlocked all {n} upgrades.", { n: UPGRADES.length }));
     });
 
     document.getElementById("adminClearUpgrades").addEventListener("click", () => {
       state.upgrades = [];
-      adminDone("Removed all upgrades.");
+      adminDone(t("🛠️ Removed all upgrades."));
     });
 
     document.getElementById("adminAllAch").addEventListener("click", () => {
       state.achievements = ACHIEVEMENTS.map(a => a.id);
       for (const el of achEl.children) el.classList.add("got");
-      adminDone("Unlocked all achievements.");
+      adminDone(t("🛠️ Unlocked all achievements."));
     });
 
     document.getElementById("adminClearAch").addEventListener("click", () => {
       state.achievements = [];
       for (const el of achEl.children) el.classList.remove("got");
-      adminDone("Cleared achievements. (They re-unlock if you still qualify.)");
+      adminDone(t("🛠️ Cleared achievements. (They re-unlock if you still qualify.)"));
     });
 
     document.getElementById("adminAllSkins").addEventListener("click", () => {
       state.skins = SKINS.map(k => k.id);
-      adminDone(`Unlocked all ${SKINS.length} skins.`);
+      adminDone(t("🛠️ Unlocked all {n} skins.", { n: SKINS.length }));
     });
 
     document.getElementById("adminSpawnGolden").addEventListener("click", () => {
@@ -1892,7 +1935,7 @@
 
     document.getElementById("adminEndBuff").addEventListener("click", () => {
       buffUntil = 0;
-      adminDone("Buff ended.");
+      adminDone(t("🛠️ Buff ended."));
     });
 
     function setGameSpeed(s) {
@@ -1906,46 +1949,46 @@
       const s = Number(e.target.dataset.speed);
       if (!s) return;
       setGameSpeed(s);
-      toast(`🛠️ Game speed x${s}.`);
+      toast(t("🛠️ Game speed x{n}.", { n: s }));
     });
 
     speedEl.addEventListener("click", () => {
       setGameSpeed(1);
-      toast("🛠️ Back to normal speed.");
+      toast(t("🛠️ Back to normal speed."));
     });
 
     adminEl.querySelectorAll("[data-skip]").forEach(btn => btn.addEventListener("click", () => {
       const secs = Number(btn.dataset.skip);
       const gain = baseCps() * secs;
       earn(gain);
-      adminDone(`Skipped ${btn.textContent.replace("Skip ", "")}: +${fmt(gain)} cookies.`);
+      adminDone(t("🛠️ Skipped {time}: +{n} cookies.", { time: t({ 60: "1 minute", 3600: "1 hour", 86400: "1 day" }[secs]), n: fmt(gain) }));
     }));
 
     document.getElementById("adminSave").addEventListener("click", () => {
       save();
-      toast("🛠️ Game saved.");
+      toast(t("🛠️ Game saved."));
     });
 
     document.getElementById("adminExport").addEventListener("click", async () => {
       const data = JSON.stringify(state);
       try {
         await navigator.clipboard.writeText(data);
-        toast("🛠️ Save copied to clipboard.");
+        toast(t("🛠️ Save copied to clipboard."));
       } catch (e) {
-        prompt("Copy your save:", data);
+        prompt(t("Copy your save:"), data);
       }
     });
 
     document.getElementById("adminImport").addEventListener("click", () => {
-      const data = prompt("Paste a save:");
+      const data = prompt(t("Paste a save:"));
       if (!data) return;
       try {
         replaceState(parseSave(data));
         for (const el of achEl.children) el.classList.toggle("got", state.achievements.includes(el.dataset.id));
         save();
-        adminDone("Save imported.");
+        adminDone(t("🛠️ Save imported."));
       } catch (e) {
-        toast("🛠️ That save couldn't be read.");
+        toast(t("🛠️ That save couldn't be read."));
       }
     });
 
@@ -2038,7 +2081,7 @@
         if (!state.achievements.includes(a.id) && a.test(state)) {
           state.achievements.push(a.id);
           computeEffects(); // kitten upgrades scale with achievements
-          toast(`🏆 Achievement unlocked: <b>${a.name}</b><br><small>${a.desc}</small>`);
+          toast(t("🏆 Achievement unlocked: <b>{name}</b><br><small>{desc}</small>", { name: a.name, desc: a.desc }));
           chime();
         }
       }
@@ -2055,7 +2098,7 @@
         // phone is locked, so catch up on the time we missed.
         const gain = baseCps() * elapsed * gameSpeed;
         earn(gain);
-        if (showToast && gain >= 1) toast(`👋 Welcome back! Your bakery made <b>${fmt(gain)}</b> cookies while you were away.`);
+        if (showToast && gain >= 1) toast(t("👋 Welcome back! Your bakery made <b>{n}</b> cookies while you were away.", { n: fmt(gain) }));
       } else {
         earn(cpsNow * elapsed * gameSpeed);
       }
@@ -2142,7 +2185,7 @@
       let data = {};
       try { data = await res.json(); } catch (e) { /* not JSON */ }
       if (!res.ok) {
-        const err = new Error(data.error || "Something went wrong.");
+        const err = new Error(t(data.error || "Something went wrong."));
         err.status = res.status;
         err.data = data;
         throw err;
@@ -2158,11 +2201,11 @@
       state.lastSaved = Date.now();
       try {
         await api("save", { save: state }, { keepalive });
-        setCloudStatus(`☁️ Progress saved to your account at ${new Date().toLocaleTimeString()}.`);
+        setCloudStatus(t("☁️ Progress saved to your account at {time}.", { time: new Date().toLocaleTimeString() }));
       } catch (e) {
         if (e.status === 401) sessionExpired();
         else if (e.status === 409 && e.data && e.data.save) adoptAdminSave(e.data.save);
-        else setCloudStatus("⚠️ Can't reach the server. Your progress is kept on this device and uploads when you're back online.");
+        else setCloudStatus(t("⚠️ Can't reach the server. Your progress is kept on this device and uploads when you're back online."));
       }
     }
 
@@ -2175,14 +2218,14 @@
       save();
       broadcast();
       render();
-      setCloudStatus(`☁️ Updated by an admin at ${new Date().toLocaleTimeString()}.`);
-      toast("🛠️ An admin updated your bakery!", true);
+      setCloudStatus(t("☁️ Updated by an admin at {time}.", { time: new Date().toLocaleTimeString() }));
+      toast(t("🛠️ An admin updated your bakery!"), true);
     }
 
     function sessionExpired() {
       writeAuth(null);
       auth = null;
-      showLogin("You were logged out (maybe your password was changed). Please log in again.");
+      showLogin(t("You were logged out (maybe your password was changed). Please log in again."));
     }
 
     // ---------- Login screen ----------
@@ -2194,7 +2237,7 @@
     function setLoginMode(mode) {
       loginMode = mode;
       for (const b of document.getElementById("loginTabs").children) b.classList.toggle("active", b.dataset.mode === mode);
-      loginSubmit.textContent = mode === "login" ? "Log in" : "Create account";
+      loginSubmit.textContent = t(mode === "login" ? "Log in" : "Create account");
       loginPass.autocomplete = mode === "login" ? "current-password" : "new-password";
       bringWrap.style.display = mode === "register" && !auth && guestHasProgress() ? "flex" : "none";
       loginError.textContent = "";
@@ -2233,7 +2276,7 @@
         try { cloud = (await api("load")).save; } catch (err) { /* new account or offline */ }
         startGame(cloud);
       } catch (err) {
-        loginError.textContent = err.status ? err.message : "Can't reach the server. Check your internet, or play as a guest.";
+        loginError.textContent = err.status ? err.message : t("Can't reach the server. Check your internet, or play as a guest.");
         loginSubmit.disabled = false;
       }
     });
@@ -2248,9 +2291,9 @@
 
     // ---------- Account window ----------
     function updateAccountUi() {
-      accountBtn.textContent = auth ? `👤 ${auth.username}` : "👤 Guest";
+      accountBtn.textContent = auth ? `👤 ${auth.username}` : t("👤 Guest");
       adminBtn.style.display = auth && auth.isAdmin ? "" : "none";
-      document.getElementById("accountTitle").textContent = auth ? `👤 ${auth.username}${auth.isAdmin ? " (admin)" : ""}` : "👤 Guest";
+      document.getElementById("accountTitle").textContent = auth ? `👤 ${auth.username}${auth.isAdmin ? t(" (admin)") : ""}` : t("👤 Guest");
       document.getElementById("accountMember").style.display = auth ? "" : "none";
       document.getElementById("accountGuest").style.display = auth ? "none" : "";
     }
@@ -2262,10 +2305,10 @@
 
     async function loadLeaderboard() {
       if (!auth) {
-        leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">Log in to see the leaderboard.</span><span></span></li>`;
+        leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">${t("Log in to see the leaderboard.")}</span><span></span></li>`;
         return;
       }
-      leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">Loading…</span><span></span></li>`;
+      leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">${t("Loading…")}</span><span></span></li>`;
       await cloudSave(); // so your own score is up to date
       try {
         const { rows } = await api("leaderboard");
@@ -2276,7 +2319,7 @@
             `<span class="name">${esc(r.username)}</span><span class="score">🍪 ${fmt(r.totalBaked)}</span></li>`;
         }).join("");
       } catch (e) {
-        leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">${esc(e.status ? e.message : "Can't reach the server.")}</span><span></span></li>`;
+        leaderboardEl.innerHTML = `<li><span></span><span></span><span class="name">${esc(e.status ? e.message : t("Can't reach the server."))}</span><span></span></li>`;
       }
     }
 
@@ -2290,9 +2333,9 @@
       try {
         await api("password", { oldPassword: oldPass.value, newPassword: newPass.value });
         oldPass.value = newPass.value = "";
-        toast("🔑 Password changed. Other devices were logged out.");
+        toast(t("🔑 Password changed. Other devices were logged out."));
       } catch (e) {
-        toast("🔑 " + esc(e.status ? e.message : "Can't reach the server."));
+        toast("🔑 " + esc(e.status ? e.message : t("Can't reach the server.")));
       }
     });
 
@@ -2306,7 +2349,7 @@
 
     // ---------- Admin: accounts ----------
     async function loadAdminUsers() {
-      adminUsersEl.textContent = "Loading accounts…";
+      adminUsersEl.textContent = t("Loading accounts…");
       try {
         const { users } = await api("admin/users");
         adminUsersEl.innerHTML = "";
@@ -2314,7 +2357,7 @@
           const isMe = u.username.toLowerCase() === auth.username.toLowerCase();
           const row = document.createElement("div");
           row.className = "user-row";
-          row.innerHTML = `<span class="name">${esc(u.username)}${u.isAdmin ? '<span class="badge">ADMIN</span>' : ""}${isMe ? " (you)" : ""}</span>` +
+          row.innerHTML = `<span class="name">${esc(u.username)}${u.isAdmin ? `<span class="badge">${t("ADMIN")}</span>` : ""}${isMe ? t(" (you)") : ""}</span>` +
             `<span class="score">🍪 ${fmt(u.totalBaked)}</span><span class="actions admin-grid"></span>`;
           const actions = row.querySelector(".actions");
           const add = (label, fn) => {
@@ -2323,20 +2366,22 @@
             b.addEventListener("click", fn);
             actions.appendChild(b);
           };
-          add("🎛️ Manage", () => openPlayer(u.username));
-          add("🔑 Set password", () => adminAction(`New password for ${u.username}:`, "admin/set-password",
-            (pw) => ({ username: u.username, newPassword: pw }), `Password for ${u.username} changed. Tell them the new one.`));
+          const who = { name: u.username };
+          add(t("🎛️ Manage"), () => openPlayer(u.username));
+          add(t("🔑 Set password"), () => adminAction(t("New password for {name}:", who), "admin/set-password",
+            (pw) => ({ username: u.username, newPassword: pw }), t("Password for {name} changed. Tell them the new one.", who)));
           if (!isMe) {
-            add(u.isAdmin ? "⭐ Remove admin" : "⭐ Make admin", () => adminAction(null, "admin/set-admin",
-              () => ({ username: u.username, isAdmin: !u.isAdmin }), `${u.username} is ${u.isAdmin ? "no longer" : "now"} an admin.`,
-              `${u.isAdmin ? "Remove admin from" : "Make"} ${u.username}${u.isAdmin ? "" : " an admin"}?`));
-            add("🗑️ Delete", () => adminAction(null, "admin/delete-user", () => ({ username: u.username }),
-              `${u.username}'s account was deleted.`, `Delete ${u.username}'s account and all their progress? This can't be undone.`));
+            add(t(u.isAdmin ? "⭐ Remove admin" : "⭐ Make admin"), () => adminAction(null, "admin/set-admin",
+              () => ({ username: u.username, isAdmin: !u.isAdmin }),
+              t(u.isAdmin ? "{name} is no longer an admin." : "{name} is now an admin.", who),
+              t(u.isAdmin ? "Remove admin from {name}?" : "Make {name} an admin?", who)));
+            add(t("🗑️ Delete"), () => adminAction(null, "admin/delete-user", () => ({ username: u.username }),
+              t("{name}'s account was deleted.", who), t("Delete {name}'s account and all their progress? This can't be undone.", who)));
           }
           adminUsersEl.appendChild(row);
         }
       } catch (e) {
-        adminUsersEl.textContent = e.status ? e.message : "Can't reach the server.";
+        adminUsersEl.textContent = e.status ? e.message : t("Can't reach the server.");
       }
     }
 
@@ -2354,21 +2399,22 @@
     }
 
     function timeAgo(ms) {
-      if (!ms) return "never";
+      if (!ms) return t("never");
       const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
-      return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`;
+      return s < 60 ? t("{n}s ago", { n: s }) : s < 3600 ? t("{n}m ago", { n: Math.floor(s / 60) })
+        : s < 86400 ? t("{n}h ago", { n: Math.floor(s / 3600) }) : t("{n}d ago", { n: Math.floor(s / 86400) });
     }
 
     function showPlayerStats(p, savedAt) {
       playerStatsEl.innerHTML = `
-        <span>Cookies</span><span>${fmt(Math.floor(p.cookies))}</span>
-        <span>Cookies baked (all time)</span><span>${fmt(Math.floor(p.totalBaked))}</span>
-        <span>Cookie clicks</span><span>${fmt(p.totalClicks)}</span>
-        <span>Buildings owned</span><span>${fmt(totalOwned(p))}</span>
-        <span>Upgrades</span><span>${p.upgrades.length} / ${UPGRADES.length}</span>
-        <span>Achievements</span><span>${p.achievements.length} / ${ACHIEVEMENTS.length}</span>
-        <span>Skins</span><span>${p.skins.length} / ${SKINS.length}</span>
-        <span>Last saved</span><span>${timeAgo(savedAt)}</span>`;
+        <span>${t("Cookies")}</span><span>${fmt(Math.floor(p.cookies))}</span>
+        <span>${t("Cookies baked (all time)")}</span><span>${fmt(Math.floor(p.totalBaked))}</span>
+        <span>${t("Cookie clicks")}</span><span>${fmt(p.totalClicks)}</span>
+        <span>${t("Buildings owned")}</span><span>${fmt(totalOwned(p))}</span>
+        <span>${t("Upgrades")}</span><span>${p.upgrades.length} / ${UPGRADES.length}</span>
+        <span>${t("Achievements")}</span><span>${p.achievements.length} / ${ACHIEVEMENTS.length}</span>
+        <span>${t("Skins")}</span><span>${p.skins.length} / ${SKINS.length}</span>
+        <span>${t("Last saved")}</span><span>${timeAgo(savedAt)}</span>`;
     }
 
     async function fetchPlayer() {
@@ -2379,13 +2425,13 @@
     async function openPlayer(username) {
       playerName = username;
       document.getElementById("playerTitle").textContent = `🎛️ ${username}`;
-      playerStatsEl.textContent = "Loading…";
+      playerStatsEl.textContent = t("Loading…");
       playerEl.classList.add("open");
       try {
         const { p, savedAt } = await fetchPlayer();
         showPlayerStats(p, savedAt);
       } catch (e) {
-        playerStatsEl.textContent = e.status ? e.message : "Can't reach the server.";
+        playerStatsEl.textContent = e.status ? e.message : t("Can't reach the server.");
       }
     }
 
@@ -2413,9 +2459,9 @@
           if (auth && playerName.toLowerCase() === auth.username.toLowerCase()) cloudSave();
           return;
         }
-        toast("🛠️ They're saving a lot right now. Try again in a moment.");
+        toast(t("🛠️ They're saving a lot right now. Try again in a moment."));
       } catch (e) {
-        toast("🛠️ " + esc(e.status ? e.message : "Can't reach the server."));
+        toast("🛠️ " + esc(e.status ? e.message : t("Can't reach the server.")));
       }
     }
 
@@ -2429,29 +2475,29 @@
 
     document.getElementById("playerAdd").addEventListener("click", (e) => {
       const amt = Number(e.target.dataset.amt);
-      if (amt) editPlayer(p => addCookiesTo(p, amt), `added ${fmt(amt)} cookies.`);
+      if (amt) editPlayer(p => addCookiesTo(p, amt), t("added {n} cookies.", { n: fmt(amt) }));
     });
 
     document.getElementById("playerSet").addEventListener("click", () => {
       const input = document.getElementById("playerSetInput").value.trim();
       const v = Number(input);
-      if (input === "" || !Number.isFinite(v) || v < 0) return toast("🛠️ Enter a number of 0 or more.");
+      if (input === "" || !Number.isFinite(v) || v < 0) return toast(t("🛠️ Enter a number of 0 or more."));
       editPlayer(p => {
         p.cookies = Math.min(v, MAX_COOKIES);
         p.totalBaked = Math.max(p.totalBaked, p.cookies);
-      }, `cookies set to ${fmt(v)}.`);
+      }, t("cookies set to {n}.", { n: fmt(v) }));
     });
 
     playerEl.querySelectorAll("[data-pbn]").forEach(btn => btn.addEventListener("click", () => {
       const b = BUILDINGS.find(x => x.id === playerBuildingSel.value);
       const n = Number(btn.dataset.pbn);
-      editPlayer(p => { p.buildings[b.id] = owned(p, b.id) + n; }, `gave ${n} ${b.name}${n > 1 ? "s" : ""}.`);
+      editPlayer(p => { p.buildings[b.id] = owned(p, b.id) + n; }, t("gave {n} × {name}.", { n, name: b.name }));
     }));
 
     const playerButton = (id, change, doneText, confirmText) =>
       document.getElementById(id).addEventListener("click", () => {
-        if (confirmText && !confirm(confirmText.replace("{name}", playerName))) return;
-        editPlayer(change, doneText);
+        if (confirmText && !confirm(t(confirmText, { name: playerName }))) return;
+        editPlayer(change, t(doneText));
       });
 
     playerButton("playerAllBuildings", p => { for (const b of BUILDINGS) p.buildings[b.id] = owned(p, b.id) + 10; }, "gave 10 of every building.");
@@ -2480,9 +2526,45 @@
         toast("🛠️ " + esc(doneText));
         loadAdminUsers();
       } catch (e) {
-        toast("🛠️ " + esc(e.status ? e.message : "Can't reach the server."));
+        toast("🛠️ " + esc(e.status ? e.message : t("Can't reach the server.")));
       }
     }
+
+    // ================= Language: page text + switch =================
+    function translatePage() {
+      if (LANG !== "he") return;
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: (n) => n.parentElement.closest("script, style, svg") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+      });
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      for (const n of nodes) {
+        const key = n.nodeValue.trim();
+        if (key && HE.strings[key]) n.nodeValue = n.nodeValue.replace(key, HE.strings[key]);
+      }
+      for (const attr of ["placeholder", "title", "aria-label"]) {
+        for (const el of document.querySelectorAll(`[${attr}]`)) {
+          const v = el.getAttribute(attr);
+          if (HE.strings[v]) el.setAttribute(attr, HE.strings[v]);
+        }
+      }
+    }
+
+    function setupLanguageButtons() {
+      upgradesEl.dataset.empty = t("Keep baking to unlock upgrades…");
+      for (const btn of document.querySelectorAll(".lang-btn")) {
+        btn.textContent = LANG === "he" ? "🌐 English" : "🌐 עברית";
+        btn.setAttribute("lang", LANG === "he" ? "en" : "he");
+        btn.addEventListener("click", () => {
+          save(); // keep progress; the cloud save also runs as the page reloads
+          try { localStorage.setItem(LANG_KEY, LANG === "he" ? "en" : "he"); } catch (e) { /* storage blocked */ }
+          location.reload();
+        });
+      }
+    }
+
+    translatePage();
+    setupLanguageButtons();
 
     // ================= Start =================
     function startAsLeader() {
@@ -2494,7 +2576,7 @@
       if (away > 10 && baseCps() > 0) {
         const offline = baseCps() * away * 0.5;
         earn(offline);
-        toast(`👋 Welcome back! Your bakery made <b>${fmt(offline)}</b> cookies while you were away.`);
+        toast(t("👋 Welcome back! Your bakery made <b>{n}</b> cookies while you were away.", { n: fmt(offline) }));
       }
       post({ type: "claim", since: leaderSince });
       render();
@@ -2536,7 +2618,7 @@
           return showLogin("Please log in again.");
         }
         // Server unreachable: keep playing with the copy on this device
-        setCloudStatus("⚠️ Can't reach the server. Your progress is kept on this device and uploads when you're back online.");
+        setCloudStatus(t("⚠️ Can't reach the server. Your progress is kept on this device and uploads when you're back online."));
       }
       let cloud = null;
       try { cloud = (await api("load")).save; } catch (e) { /* offline: use this device's copy */ }
