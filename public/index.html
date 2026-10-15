@@ -1248,11 +1248,36 @@
     }
 
     // ================= Sound =================
+    // Every sound plays through one master volume (4x the original level).
+    // Before the boost, a safety curve leaves normal sounds exactly as they
+    // are and only rounds off the peak if lots of sounds pile up at once,
+    // so the boosted sound can never go past the speaker's limit and crackle.
+    const MASTER_VOLUME = 4;
     let audio;
+    let master;
+
+    function makeMaster(ctx) {
+      const linear = 0.2, room = 1 / MASTER_VOLUME - linear; // 0.2 + room = the loudest allowed before the boost
+      const curve = new Float32Array(4097);
+      for (let i = 0; i < curve.length; i++) {
+        const x = (i / 2048) - 1, a = Math.abs(x);
+        curve[i] = a <= linear ? x : Math.sign(x) * (linear + room * Math.tanh((a - linear) / room));
+      }
+      const safety = ctx.createWaveShaper();
+      safety.curve = curve;
+      const gain = ctx.createGain();
+      gain.gain.value = MASTER_VOLUME;
+      safety.connect(gain).connect(ctx.destination);
+      return safety;
+    }
+
     function beep(freq, duration = 0.08, type = "sine", volume = 0.1) {
       if (!soundOn) return;
       try {
-        audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+        if (!audio) {
+          audio = new (window.AudioContext || window.webkitAudioContext)();
+          master = makeMaster(audio);
+        }
         const osc = audio.createOscillator();
         const gain = audio.createGain();
         osc.type = type;
@@ -1260,7 +1285,7 @@
         osc.frequency.exponentialRampToValueAtTime(freq * 1.4, audio.currentTime + duration);
         gain.gain.setValueAtTime(volume, audio.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
-        osc.connect(gain).connect(audio.destination);
+        osc.connect(gain).connect(master);
         osc.start();
         osc.stop(audio.currentTime + duration);
       } catch (e) { /* audio unavailable */ }
