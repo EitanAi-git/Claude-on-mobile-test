@@ -1248,16 +1248,17 @@
     }
 
     // ================= Sound =================
-    // Every sound plays through one master volume (4x the original level).
+    // Every sound plays through one master volume, set so each sound peaks
+    // just under the loudest a phone can play (clear even at low volume).
     // Before the boost, a safety curve leaves normal sounds exactly as they
     // are and only rounds off the peak if lots of sounds pile up at once,
     // so the boosted sound can never go past the speaker's limit and crackle.
-    const MASTER_VOLUME = 4;
+    const MASTER_VOLUME = 7.2;
     let audio;
     let master;
 
     function makeMaster(ctx) {
-      const linear = 0.2, room = 1 / MASTER_VOLUME - linear; // 0.2 + room = the loudest allowed before the boost
+      const linear = 0.125, room = 1 / MASTER_VOLUME - linear; // linear + room = the loudest allowed before the boost
       const curve = new Float32Array(4097);
       for (let i = 0; i < curve.length; i++) {
         const x = (i / 2048) - 1, a = Math.abs(x);
@@ -1524,7 +1525,7 @@
         btn.addEventListener("click", () => {
           if (!state.skins.includes(k.id)) return toast(`🔒 <b>${k.name}</b>: ${k.req} to unlock.`);
           state.skin = k.id;
-          beep(700, 0.08, "triangle", 0.1);
+          beep(700, 0.08, "triangle", 0.12);
           render();
         });
         skinsEl.appendChild(btn);
@@ -1558,7 +1559,7 @@
       const y = e.clientY || rect.top + rect.height / 2;
       floatNum("+" + fmt(v, 1), x, y);
       crumbs(x, y, 8);
-      beep(420 + Math.random() * 80, 0.06, "sine", 0.08);
+      beep(420 + Math.random() * 80, 0.06, "sine", 0.12);
       if (navigator.vibrate) navigator.vibrate(8);
     });
 
@@ -1568,7 +1569,7 @@
       if (!Number.isFinite(cost) || state.cookies < cost) return;
       state.cookies -= cost;
       state.buildings[b.id] = have + buyAmount;
-      beep(600, 0.1, "triangle", 0.1);
+      beep(600, 0.1, "triangle", 0.12);
       if (e && e.clientX) crumbs(e.clientX, e.clientY, 10, ["#ffcc4d", "#ff8a3d", "#fff6ec"]);
       if (have === 0) toast(`${b.icon} <b>${b.name}</b> unlocked! ${b.desc}`);
     }
